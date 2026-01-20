@@ -2,49 +2,120 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8" />
-<title>PDF抽出 & PDF挿入ツール（動作版）</title>
-<!-- 修正: バージョンを指定し、unpkgを使用することで安定性を向上 -->
+<title>PDF抽出 & PDF挿入ツール（改善版）</title>
 <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <style>
-  body { font-family: Arial, sans-serif; margin: 30px; }
-  input, button { margin: 5px 0; padding: 5px; }
-  h2, h3 { color: #333; }
-  hr { margin: 30px 0; }
+  body { font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; margin: 30px; color: #333; }
+  h2 { border-bottom: 2px solid #333; padding-bottom: 10px; }
+  h3 { margin-top: 0; color: #0056b3; }
+  
+  /* 入力エリアのスタイル */
+  .tool-section {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 30px;
+  }
+  
+  /* グループ化のスタイル */
+  .input-group {
+    background-color: #fff;
+    border: 1px solid #ccc;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+  }
+  .input-group h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 16px;
+    color: #444;
+    border-left: 4px solid #0056b3;
+    padding-left: 8px;
+  }
+  
+  label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 14px; }
+  input[type="file"] { margin-bottom: 10px; display: block; }
+  input[type="number"] { padding: 5px; width: 60px; }
+  
+  button {
+    background-color: #0056b3;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 10px;
+  }
+  button:hover { background-color: #004494; }
+  
+  .note { font-size: 12px; color: #666; margin-top: -5px; margin-bottom: 10px; display: block; }
 </style>
 </head>
 <body>
-<h2>PDFツール（動作版）</h2>
 
-<h3>① PDF 1ページ抽出</h3>
-<input type="file" id="extractPdf"><br />
-ページ番号: <input type="number" id="extractPage" min="1"><br />
-<button id="extractBtn">抽出してダウンロード</button>
+<h2>PDFツール</h2>
 
-<hr />
+<!-- ① PDF 1ページ抽出 -->
+<div class="tool-section">
+  <h3>① PDF 1ページ抽出</h3>
+  <div class="input-group">
+    <label>対象のPDFファイルを選択:</label>
+    <input type="file" id="extractPdf">
+    
+    <label>抽出したいページ番号:</label>
+    <input type="number" id="extractPage" min="1" placeholder="1">
+    <span class="note">※指定した1ページだけを取り出します。</span>
+  </div>
+  <button id="extractBtn">抽出してダウンロード</button>
+</div>
 
-<h3>② PDFページ挿入</h3>
-<input type="file" id="basePdf"><br />
-<input type="file" id="insertPdf"><br />
-PDF A に挿入する位置: <input type="number" id="insertPos" min="1"><br />
-PDF B の抽出ページ番号: <input type="number" id="insertPage" min="1"><br />
-<button id="insertBtn">挿入してダウンロード</button>
+<!-- ② PDFページ挿入 -->
+<div class="tool-section">
+  <h3>② PDFページ挿入</h3>
+  <p style="margin-bottom: 15px;">2つのPDFを結合します。</p>
+
+  <!-- ステップ1: ベース -->
+  <div class="input-group">
+    <h4>1. メインとなるPDF（挿入先）</h4>
+    <label>ファイルを選択:</label>
+    <input type="file" id="basePdf">
+    
+    <label>挿入する位置（ページ番号）:</label>
+    <input type="number" id="insertPos" min="1" placeholder="1">
+    <span class="note">※ここで指定したページの<strong>後ろ</strong>に挿入されます。<br>（例：「1」と入力 → 1ページ目の直後に挿入）</span>
+  </div>
+
+  <!-- ステップ2: 挿入素材 -->
+  <div class="input-group">
+    <h4>2. 挿入するPDF（素材）</h4>
+    <label>ファイルを選択:</label>
+    <input type="file" id="insertPdf">
+    
+    <label>使用するページ番号:</label>
+    <input type="number" id="insertPage" min="1" placeholder="1">
+    <span class="note">※このファイルの指定した1ページだけを使います。</span>
+  </div>
+
+  <button id="insertBtn">挿入してダウンロード</button>
+</div>
 
 <script>
-// 修正: ライブラリが読み込まれているか確認
+// ライブラリ読み込みチェック
 if (typeof PDFLib === 'undefined') {
-  alert('PDF-Lib ライブラリの読み込みに失敗しました。インターネット接続を確認するか、ページを再読み込みしてください。');
+  alert('PDF-Lib ライブラリの読み込みに失敗しました。インターネット接続を確認してください。');
 }
-
-// PDFLibが未定義の場合にエラーにならないよう空オブジェクトをフォールバックに設定
 const { PDFDocument } = (typeof PDFLib !== 'undefined' ? PDFLib : {});
 
 let extractFileData = null;
 let baseFileData = null;
 let insertFileData = null;
 
-// ファイルアップロード時にArrayBufferに変換
+// ファイル読み込み処理
 document.getElementById("extractPdf").addEventListener("change", async (e) => {
-  if (e.target.files.length === 0) return; // ファイル選択キャンセルの対策
+  if (e.target.files.length === 0) return;
   extractFileData = await e.target.files[0].arrayBuffer();
 });
 document.getElementById("basePdf").addEventListener("change", async (e) => {
@@ -56,24 +127,24 @@ document.getElementById("insertPdf").addEventListener("change", async (e) => {
   insertFileData = await e.target.files[0].arrayBuffer();
 });
 
-// ① PDF 1ページ抽出
+// ① 抽出ボタン処理
 document.getElementById("extractBtn").addEventListener("click", async () => {
-  // ライブラリチェック
-  if (!PDFDocument) {
-    alert('PDFライブラリが正しく読み込まれていません。');
+  if (!PDFDocument) return;
+  const pageNum = parseInt(document.getElementById("extractPage").value, 10);
+  
+  if (!extractFileData) {
+    alert("PDFファイルを選択してください");
     return;
   }
-
-  const pageNum = parseInt(document.getElementById("extractPage").value, 10);
-  if (!extractFileData || !pageNum) {
-    alert("ファイルとページ番号を入力してください");
+  if (!pageNum) {
+    alert("ページ番号を入力してください");
     return;
   }
 
   try {
     const pdf = await PDFDocument.load(extractFileData);
     if (pageNum < 1 || pageNum > pdf.getPageCount()) {
-      alert("ページ番号が範囲外です");
+      alert(`ページ番号が範囲外です (全 ${pdf.getPageCount()} ページ)`);
       return;
     }
 
@@ -81,36 +152,29 @@ document.getElementById("extractBtn").addEventListener("click", async () => {
     const [copiedPage] = await newPdf.copyPages(pdf, [pageNum - 1]);
     newPdf.addPage(copiedPage);
 
-    const pdfBytes = await newPdf.save();
-    const blob = new Blob([pdfBytes], { type: "application/pdf" });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "extracted_page.pdf";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
+    downloadPdf(newPdf, "extracted_page.pdf");
   } catch (e) {
-    alert("エラーが発生しました: " + e.message);
+    alert("エラー: " + e.message);
     console.error(e);
   }
 });
 
-// ② PDFページ挿入
+// ② 挿入ボタン処理
 document.getElementById("insertBtn").addEventListener("click", async () => {
-  if (!PDFDocument) {
-    alert('PDFライブラリが正しく読み込まれていません。');
-    return;
-  }
-
+  if (!PDFDocument) return;
   const insertPos = parseInt(document.getElementById("insertPos").value, 10);
   const insertPage = parseInt(document.getElementById("insertPage").value, 10);
 
-  if (!baseFileData || !insertFileData || !insertPos || !insertPage) {
-    alert("すべてのファイルとページ番号を入力してください");
+  if (!baseFileData) {
+    alert("「メインとなるPDF」を選択してください");
+    return;
+  }
+  if (!insertFileData) {
+    alert("「挿入するPDF」を選択してください");
+    return;
+  }
+  if (!insertPos || !insertPage) {
+    alert("ページ番号をすべて入力してください");
     return;
   }
 
@@ -119,38 +183,48 @@ document.getElementById("insertBtn").addEventListener("click", async () => {
     const insertPdf = await PDFDocument.load(insertFileData);
     const newPdf = await PDFDocument.create();
 
+    // ページ範囲チェック
+    if (insertPos < 1 || insertPos > basePdf.getPageCount()) {
+      alert(`挿入位置が範囲外です。メインPDFは全 ${basePdf.getPageCount()} ページです。`);
+      return;
+    }
     if (insertPage < 1 || insertPage > insertPdf.getPageCount()) {
-      alert("差し込みページ番号が範囲外です");
+      alert(`挿入するページ番号が範囲外です。素材PDFは全 ${insertPdf.getPageCount()} ページです。`);
       return;
     }
 
     const basePages = await newPdf.copyPages(basePdf, basePdf.getPageIndices());
     const [copiedPage] = await newPdf.copyPages(insertPdf, [insertPage - 1]);
 
+    // ページを順番に追加
     for (let i = 0; i < basePages.length; i++) {
       newPdf.addPage(basePages[i]);
+      // 指定したページ番号(i+1)の後ろに追加
       if (i === insertPos - 1) {
         newPdf.addPage(copiedPage);
       }
     }
 
-    const pdfBytes = await newPdf.save();
-    const blob = new Blob([pdfBytes], { type: "application/pdf" });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "merged.pdf";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
+    downloadPdf(newPdf, "merged.pdf");
   } catch (e) {
-    alert("エラーが発生しました: " + e.message);
+    alert("エラー: " + e.message);
     console.error(e);
   }
 });
+
+// ダウンロード用ヘルパー関数
+async function downloadPdf(pdfDoc, fileName) {
+  const pdfBytes = await pdfDoc.save();
+  const blob = new Blob([pdfBytes], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 </script>
 </body>
 </html>
