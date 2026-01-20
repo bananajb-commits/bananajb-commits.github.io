@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <title>PDF抽出 & PDF挿入ツール（動作版）</title>
-<script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
+<!-- 修正: バージョンを指定し、unpkgを使用することで安定性を向上 -->
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <style>
   body { font-family: Arial, sans-serif; margin: 30px; }
   input, button { margin: 5px 0; padding: 5px; }
@@ -29,7 +30,13 @@ PDF B の抽出ページ番号: <input type="number" id="insertPage" min="1"><br
 <button id="insertBtn">挿入してダウンロード</button>
 
 <script>
-const { PDFDocument } = PDFLib;
+// 修正: ライブラリが読み込まれているか確認
+if (typeof PDFLib === 'undefined') {
+  alert('PDF-Lib ライブラリの読み込みに失敗しました。インターネット接続を確認するか、ページを再読み込みしてください。');
+}
+
+// PDFLibが未定義の場合にエラーにならないよう空オブジェクトをフォールバックに設定
+const { PDFDocument } = (typeof PDFLib !== 'undefined' ? PDFLib : {});
 
 let extractFileData = null;
 let baseFileData = null;
@@ -37,17 +44,26 @@ let insertFileData = null;
 
 // ファイルアップロード時にArrayBufferに変換
 document.getElementById("extractPdf").addEventListener("change", async (e) => {
+  if (e.target.files.length === 0) return; // ファイル選択キャンセルの対策
   extractFileData = await e.target.files[0].arrayBuffer();
 });
 document.getElementById("basePdf").addEventListener("change", async (e) => {
+  if (e.target.files.length === 0) return;
   baseFileData = await e.target.files[0].arrayBuffer();
 });
 document.getElementById("insertPdf").addEventListener("change", async (e) => {
+  if (e.target.files.length === 0) return;
   insertFileData = await e.target.files[0].arrayBuffer();
 });
 
 // ① PDF 1ページ抽出
 document.getElementById("extractBtn").addEventListener("click", async () => {
+  // ライブラリチェック
+  if (!PDFDocument) {
+    alert('PDFライブラリが正しく読み込まれていません。');
+    return;
+  }
+
   const pageNum = parseInt(document.getElementById("extractPage").value, 10);
   if (!extractFileData || !pageNum) {
     alert("ファイルとページ番号を入力してください");
@@ -85,6 +101,11 @@ document.getElementById("extractBtn").addEventListener("click", async () => {
 
 // ② PDFページ挿入
 document.getElementById("insertBtn").addEventListener("click", async () => {
+  if (!PDFDocument) {
+    alert('PDFライブラリが正しく読み込まれていません。');
+    return;
+  }
+
   const insertPos = parseInt(document.getElementById("insertPos").value, 10);
   const insertPage = parseInt(document.getElementById("insertPage").value, 10);
 
