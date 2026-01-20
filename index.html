@@ -1,64 +1,67 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
 <title>PDF抽出 & PDF挿入ツール（動作版）</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.18.0/pdf-lib.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
 <style>
-body { font-family: Arial, sans-serif; margin: 30px; }
-input, button { margin: 5px 0; padding: 5px; }
-h2, h3 { color: #333; }
-hr { margin: 30px 0; }
+  body { font-family: Arial, sans-serif; margin: 30px; }
+  input, button { margin: 5px 0; padding: 5px; }
+  h2, h3 { color: #333; }
+  hr { margin: 30px 0; }
 </style>
 </head>
 <body>
 <h2>PDFツール（動作版）</h2>
 
 <h3>① PDF 1ページ抽出</h3>
-<input type="file" id="extractPdf"><br>
-ページ番号: <input type="number" id="extractPage" min="1"><br>
+<input type="file" id="extractPdf"><br />
+ページ番号: <input type="number" id="extractPage" min="1"><br />
 <button id="extractBtn">抽出してダウンロード</button>
 
-<hr>
+<hr />
 
 <h3>② PDFページ挿入</h3>
-<input type="file" id="basePdf"><br>
-<input type="file" id="insertPdf"><br>
-PDF A に挿入する位置: <input type="number" id="insertPos" min="1"><br>
-PDF B の抽出ページ番号: <input type="number" id="insertPage" min="1"><br>
+<input type="file" id="basePdf"><br />
+<input type="file" id="insertPdf"><br />
+PDF A に挿入する位置: <input type="number" id="insertPos" min="1"><br />
+PDF B の抽出ページ番号: <input type="number" id="insertPage" min="1"><br />
 <button id="insertBtn">挿入してダウンロード</button>
 
 <script>
+const { PDFDocument } = PDFLib;
+
 let extractFileData = null;
 let baseFileData = null;
 let insertFileData = null;
 
-// ------------------------
-// ファイルをアップロードしたら ArrayBuffer に変換
-// ------------------------
+// ファイルアップロード時にArrayBufferに変換
 document.getElementById("extractPdf").addEventListener("change", async (e) => {
-    extractFileData = await e.target.files[0].arrayBuffer();
+  extractFileData = await e.target.files[0].arrayBuffer();
 });
-
 document.getElementById("basePdf").addEventListener("change", async (e) => {
-    baseFileData = await e.target.files[0].arrayBuffer();
+  baseFileData = await e.target.files[0].arrayBuffer();
 });
-
 document.getElementById("insertPdf").addEventListener("change", async (e) => {
-    insertFileData = await e.target.files[0].arrayBuffer();
+  insertFileData = await e.target.files[0].arrayBuffer();
 });
 
-// ------------------------
 // ① PDF 1ページ抽出
-// ------------------------
 document.getElementById("extractBtn").addEventListener("click", async () => {
-    const pageNum = parseInt(document.getElementById("extractPage").value, 10);
-    if (!extractFileData || !pageNum) { alert("ファイルとページ番号を入力してください"); return; }
+  const pageNum = parseInt(document.getElementById("extractPage").value, 10);
+  if (!extractFileData || !pageNum) {
+    alert("ファイルとページ番号を入力してください");
+    return;
+  }
 
-    const pdf = await PDFLib.PDFDocument.load(extractFileData);
-    if (pageNum < 1 || pageNum > pdf.getPageCount()) { alert("ページ番号が範囲外です"); return; }
+  try {
+    const pdf = await PDFDocument.load(extractFileData);
+    if (pageNum < 1 || pageNum > pdf.getPageCount()) {
+      alert("ページ番号が範囲外です");
+      return;
+    }
 
-    const newPdf = await PDFLib.PDFDocument.create();
+    const newPdf = await PDFDocument.create();
     const [copiedPage] = await newPdf.copyPages(pdf, [pageNum - 1]);
     newPdf.addPage(copiedPage);
 
@@ -73,34 +76,41 @@ document.getElementById("extractBtn").addEventListener("click", async () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+
+  } catch (e) {
+    alert("エラーが発生しました: " + e.message);
+    console.error(e);
+  }
 });
 
-// ------------------------
 // ② PDFページ挿入
-// ------------------------
 document.getElementById("insertBtn").addEventListener("click", async () => {
-    const insertPos = parseInt(document.getElementById("insertPos").value, 10);
-    const insertPage = parseInt(document.getElementById("insertPage").value, 10);
+  const insertPos = parseInt(document.getElementById("insertPos").value, 10);
+  const insertPage = parseInt(document.getElementById("insertPage").value, 10);
 
-    if (!baseFileData || !insertFileData || !insertPos || !insertPage) {
-        alert("すべてのファイルとページ番号を入力してください");
-        return;
+  if (!baseFileData || !insertFileData || !insertPos || !insertPage) {
+    alert("すべてのファイルとページ番号を入力してください");
+    return;
+  }
+
+  try {
+    const basePdf = await PDFDocument.load(baseFileData);
+    const insertPdf = await PDFDocument.load(insertFileData);
+    const newPdf = await PDFDocument.create();
+
+    if (insertPage < 1 || insertPage > insertPdf.getPageCount()) {
+      alert("差し込みページ番号が範囲外です");
+      return;
     }
 
-    const basePdf = await PDFLib.PDFDocument.load(baseFileData);
-    const insertPdf = await PDFLib.PDFDocument.load(insertFileData);
-    const newPdf = await PDFLib.PDFDocument.create();
-
     const basePages = await newPdf.copyPages(basePdf, basePdf.getPageIndices());
-
-    if (insertPage < 1 || insertPage > insertPdf.getPageCount()) { alert("差し込みページ番号が範囲外です"); return; }
     const [copiedPage] = await newPdf.copyPages(insertPdf, [insertPage - 1]);
 
     for (let i = 0; i < basePages.length; i++) {
-        newPdf.addPage(basePages[i]);
-        if (i === insertPos - 1) {
-            newPdf.addPage(copiedPage);
-        }
+      newPdf.addPage(basePages[i]);
+      if (i === insertPos - 1) {
+        newPdf.addPage(copiedPage);
+      }
     }
 
     const pdfBytes = await newPdf.save();
@@ -114,6 +124,11 @@ document.getElementById("insertBtn").addEventListener("click", async () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+
+  } catch (e) {
+    alert("エラーが発生しました: " + e.message);
+    console.error(e);
+  }
 });
 </script>
 </body>
