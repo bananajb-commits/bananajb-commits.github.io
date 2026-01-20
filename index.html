@@ -2,104 +2,285 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8" />
-<title>PDF抽出 & PDF挿入ツール（改善版）</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF編集ツール | 高機能版</title>
+<!-- PDF-Libの読み込み -->
 <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<!-- Google Fonts (Noto Sans JP) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+
 <style>
-  body { font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; margin: 30px; color: #333; }
-  h2 { border-bottom: 2px solid #333; padding-bottom: 10px; }
-  h3 { margin-top: 0; color: #0056b3; }
-  
-  /* 入力エリアのスタイル */
-  .tool-section {
-    background-color: #f9f9f9;
-    border: 1px solid #ddd;
-    border-radius: 8px;
+  :root {
+    --primary-color: #4f46e5; /* インディゴ */
+    --primary-hover: #4338ca;
+    --bg-color: #f3f4f6;
+    --card-bg: #ffffff;
+    --text-main: #1f2937;
+    --text-sub: #6b7280;
+    --border-color: #e5e7eb;
+    --accent-bg: #eef2ff;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    margin: 0;
     padding: 20px;
+    line-height: 1.6;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  h1 {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  /* カードスタイル */
+  .card {
+    background-color: var(--card-bg);
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    padding: 30px;
     margin-bottom: 30px;
+    transition: transform 0.2s ease;
   }
-  
-  /* グループ化のスタイル */
-  .input-group {
-    background-color: #fff;
-    border: 1px solid #ccc;
-    padding: 15px;
-    margin-bottom: 15px;
-    border-radius: 5px;
-  }
-  .input-group h4 {
+
+  .card h2 {
+    font-size: 18px;
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--accent-bg);
+    padding-bottom: 10px;
     margin-top: 0;
-    margin-bottom: 10px;
-    font-size: 16px;
-    color: #444;
-    border-left: 4px solid #0056b3;
-    padding-left: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
-  
-  label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 14px; }
-  input[type="file"] { margin-bottom: 10px; display: block; }
-  input[type="number"] { padding: 5px; width: 60px; }
-  
-  button {
-    background-color: #0056b3;
+
+  /* フォーム要素 */
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: var(--text-main);
+  }
+
+  .input-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* ファイル入力の装飾 */
+  input[type="file"] {
+    font-size: 14px;
+    padding: 10px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 8px;
+    background-color: #f8fafc;
+    width: 100%;
+    cursor: pointer;
+    transition: border-color 0.3s;
+  }
+  input[type="file"]:hover {
+    border-color: var(--primary-color);
+    background-color: var(--accent-bg);
+  }
+
+  /* 数値入力 */
+  input[type="number"] {
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 16px;
+    width: 100%;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  input[type="number"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+  }
+
+  /* 説明書き */
+  .note {
+    font-size: 12px;
+    color: var(--text-sub);
+    margin-top: 4px;
+  }
+
+  /* 挿入セクションの分割レイアウト */
+  .split-section {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  @media (min-width: 600px) {
+    .split-section {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .sub-card {
+    background-color: #f9fafb;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .sub-card h3 {
+    font-size: 15px;
+    margin-top: 0;
+    color: #4b5563;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .badge {
+    background-color: var(--primary-color);
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    vertical-align: middle;
+  }
+
+  /* ボタン */
+  .btn-primary {
+    background-color: var(--primary-color);
     color: white;
     border: none;
-    padding: 10px 20px;
+    padding: 12px 24px;
     font-size: 16px;
-    border-radius: 5px;
+    font-weight: 700;
+    border-radius: 8px;
     cursor: pointer;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.3s, transform 0.1s;
     margin-top: 10px;
   }
-  button:hover { background-color: #004494; }
-  
-  .note { font-size: 12px; color: #666; margin-top: -5px; margin-bottom: 10px; display: block; }
+  .btn-primary:hover {
+    background-color: var(--primary-hover);
+  }
+  .btn-primary:active {
+    transform: scale(0.98);
+  }
+  .btn-primary:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+  }
+
+  /* アイコン用SVGスタイル */
+  .icon { width: 20px; height: 20px; }
+
 </style>
 </head>
 <body>
 
-<h2>PDFツール</h2>
+<div class="container">
+  <header>
+    <h1>
+      <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+      PDF 編集ツール
+    </h1>
+    <p style="color: var(--text-sub); font-size: 14px;">ブラウザ上で安全にPDFの抽出・結合ができます</p>
+  </header>
 
-<!-- ① PDF 1ページ抽出 -->
-<div class="tool-section">
-  <h3>① PDF 1ページ抽出</h3>
-  <div class="input-group">
-    <label>対象のPDFファイルを選択:</label>
-    <input type="file" id="extractPdf">
-    
-    <label>抽出したいページ番号:</label>
-    <input type="number" id="extractPage" min="1" placeholder="1">
-    <span class="note">※指定した1ページだけを取り出します。</span>
-  </div>
-  <button id="extractBtn">抽出してダウンロード</button>
-</div>
-
-<!-- ② PDFページ挿入 -->
-<div class="tool-section">
-  <h3>② PDFページ挿入</h3>
-  <p style="margin-bottom: 15px;">2つのPDFを結合します。</p>
-
-  <!-- ステップ1: ベース -->
-  <div class="input-group">
-    <h4>1. メインとなるPDF（挿入先）</h4>
-    <label>ファイルを選択:</label>
-    <input type="file" id="basePdf">
-    
-    <label>挿入する位置（ページ番号）:</label>
-    <input type="number" id="insertPos" min="1" placeholder="1">
-    <span class="note">※ここで指定したページの<strong>後ろ</strong>に挿入されます。<br>（例：「1」と入力 → 1ページ目の直後に挿入）</span>
+  <!-- ① PDF 1ページ抽出 -->
+  <div class="card">
+    <h2>
+      <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path></svg>
+      1ページ抽出
+    </h2>
+    <div class="form-group">
+      <label>対象のPDFファイル</label>
+      <input type="file" id="extractPdf" accept=".pdf">
+    </div>
+    <div class="form-group">
+      <label>抽出するページ番号</label>
+      <input type="number" id="extractPage" min="1" placeholder="例: 3">
+      <span class="note">※指定した1ページだけを取り出して保存します。</span>
+    </div>
+    <button id="extractBtn" class="btn-primary">
+      <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+      抽出してダウンロード
+    </button>
   </div>
 
-  <!-- ステップ2: 挿入素材 -->
-  <div class="input-group">
-    <h4>2. 挿入するPDF（素材）</h4>
-    <label>ファイルを選択:</label>
-    <input type="file" id="insertPdf">
+  <!-- ② PDFページ挿入 -->
+  <div class="card">
+    <h2>
+      <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+      ページ挿入・結合
+    </h2>
     
-    <label>使用するページ番号:</label>
-    <input type="number" id="insertPage" min="1" placeholder="1">
-    <span class="note">※このファイルの指定した1ページだけを使います。</span>
-  </div>
+    <div class="split-section">
+      <!-- ベースPDF -->
+      <div class="sub-card">
+        <h3><span class="badge">A</span> メインのPDF（挿入先）</h3>
+        <div class="form-group">
+          <label>ファイルを選択</label>
+          <input type="file" id="basePdf" accept=".pdf">
+        </div>
+        <div class="form-group">
+          <label>挿入位置（ページ番号）</label>
+          <input type="number" id="insertPos" min="1" placeholder="例: 1">
+          <span class="note">※このページの<strong>後ろ</strong>に挿入されます。</span>
+        </div>
+      </div>
 
-  <button id="insertBtn">挿入してダウンロード</button>
+      <!-- 挿入PDF -->
+      <div class="sub-card">
+        <h3><span class="badge">B</span> 挿入するPDF（素材）</h3>
+        <div class="form-group">
+          <label>ファイルを選択</label>
+          <input type="file" id="insertPdf" accept=".pdf">
+        </div>
+        <div class="form-group">
+          <label>使用するページ番号</label>
+          <input type="number" id="insertPage" min="1" placeholder="例: 1">
+          <span class="note">※このファイルの指定ページを使います。</span>
+        </div>
+      </div>
+    </div>
+
+    <button id="insertBtn" class="btn-primary" style="margin-top: 20px;">
+      <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+      結合してダウンロード
+    </button>
+  </div>
 </div>
 
 <script>
@@ -127,6 +308,29 @@ document.getElementById("insertPdf").addEventListener("change", async (e) => {
   insertFileData = await e.target.files[0].arrayBuffer();
 });
 
+// ボタンの状態を変更する関数
+function setButtonLoading(btnId, isLoading) {
+  const btn = document.getElementById(btnId);
+  if (isLoading) {
+    btn.disabled = true;
+    btn.innerHTML = `<svg class="icon" style="animation: spin 1s linear infinite;" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" stroke-opacity="0.3"></circle><path fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> 処理中...`;
+  } else {
+    btn.disabled = false;
+    // 元のテキストに戻す（簡易実装のため固定テキスト）
+    if(btnId === 'extractBtn') {
+      btn.innerHTML = `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> 抽出してダウンロード`;
+    } else {
+      btn.innerHTML = `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg> 結合してダウンロード`;
+    }
+  }
+}
+
+// スピナー用CSS追加
+const style = document.createElement('style');
+style.innerHTML = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
+document.head.appendChild(style);
+
+
 // ① 抽出ボタン処理
 document.getElementById("extractBtn").addEventListener("click", async () => {
   if (!PDFDocument) return;
@@ -141,10 +345,16 @@ document.getElementById("extractBtn").addEventListener("click", async () => {
     return;
   }
 
+  setButtonLoading("extractBtn", true);
+
   try {
+    // 少し待機させてUIの更新を反映させる
+    await new Promise(r => setTimeout(r, 100));
+
     const pdf = await PDFDocument.load(extractFileData);
     if (pageNum < 1 || pageNum > pdf.getPageCount()) {
       alert(`ページ番号が範囲外です (全 ${pdf.getPageCount()} ページ)`);
+      setButtonLoading("extractBtn", false);
       return;
     }
 
@@ -152,10 +362,12 @@ document.getElementById("extractBtn").addEventListener("click", async () => {
     const [copiedPage] = await newPdf.copyPages(pdf, [pageNum - 1]);
     newPdf.addPage(copiedPage);
 
-    downloadPdf(newPdf, "extracted_page.pdf");
+    await downloadPdf(newPdf, "extracted_page.pdf");
   } catch (e) {
     alert("エラー: " + e.message);
     console.error(e);
+  } finally {
+    setButtonLoading("extractBtn", false);
   }
 });
 
@@ -178,37 +390,42 @@ document.getElementById("insertBtn").addEventListener("click", async () => {
     return;
   }
 
+  setButtonLoading("insertBtn", true);
+
   try {
+    await new Promise(r => setTimeout(r, 100));
+
     const basePdf = await PDFDocument.load(baseFileData);
     const insertPdf = await PDFDocument.load(insertFileData);
     const newPdf = await PDFDocument.create();
 
-    // ページ範囲チェック
     if (insertPos < 1 || insertPos > basePdf.getPageCount()) {
       alert(`挿入位置が範囲外です。メインPDFは全 ${basePdf.getPageCount()} ページです。`);
+      setButtonLoading("insertBtn", false);
       return;
     }
     if (insertPage < 1 || insertPage > insertPdf.getPageCount()) {
       alert(`挿入するページ番号が範囲外です。素材PDFは全 ${insertPdf.getPageCount()} ページです。`);
+      setButtonLoading("insertBtn", false);
       return;
     }
 
     const basePages = await newPdf.copyPages(basePdf, basePdf.getPageIndices());
     const [copiedPage] = await newPdf.copyPages(insertPdf, [insertPage - 1]);
 
-    // ページを順番に追加
     for (let i = 0; i < basePages.length; i++) {
       newPdf.addPage(basePages[i]);
-      // 指定したページ番号(i+1)の後ろに追加
       if (i === insertPos - 1) {
         newPdf.addPage(copiedPage);
       }
     }
 
-    downloadPdf(newPdf, "merged.pdf");
+    await downloadPdf(newPdf, "merged.pdf");
   } catch (e) {
     alert("エラー: " + e.message);
     console.error(e);
+  } finally {
+    setButtonLoading("insertBtn", false);
   }
 });
 
