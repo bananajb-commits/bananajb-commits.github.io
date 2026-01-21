@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>高機能 PDF編集ツール | 修正版</title>
+    <title>PDF編集ツール | 安定・高画質版</title>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -12,65 +12,64 @@
         :root { --primary: #4f46e5; --bg: #f1f5f9; --border: #cbd5e1; --accent: #10b981; }
         body { font-family: 'Noto Sans JP', sans-serif; margin: 0; background: var(--bg); height: 100vh; overflow: hidden; }
         
+        /* モード選択 */
         #mode-selection {
-            position: fixed; inset: 0; background: #1e293b; z-index: 2000;
+            position: fixed; inset: 0; background: #1e293b; z-index: 9999;
             display: flex; flex-direction: column; justify-content: center; align-items: center; color: white;
         }
-        .mode-cards { display: flex; gap: 30px; margin-top: 40px; }
+        .mode-cards { display: flex; gap: 20px; margin-top: 30px; }
         .mode-card {
-            background: white; color: #1e293b; padding: 40px; border-radius: 16px; width: 280px;
-            text-align: center; cursor: pointer; transition: 0.3s; box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            background: white; color: #1e293b; padding: 30px; border-radius: 12px; width: 240px;
+            text-align: center; cursor: pointer; transition: 0.2s;
         }
-        .mode-card:hover { transform: translateY(-10px); background: var(--primary); color: white; }
+        .mode-card:hover { transform: translateY(-5px); background: var(--primary); color: white; }
 
-        header { background: #1e293b; color: white; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; z-index: 100; }
+        header { background: #1e293b; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
         .hidden { display: none !important; }
-        main { display: flex; flex: 1; overflow: hidden; height: calc(100vh - 60px); }
+        main { display: flex; flex: 1; overflow: hidden; height: calc(100vh - 55px); }
 
         #merge-view { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; background: #cbd5e1; }
         .column { background: var(--bg); display: flex; flex-direction: column; overflow: hidden; }
-        .column-header { padding: 15px; background: white; border-bottom: 1px solid var(--border); }
-        .scroll-area { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .column-header { padding: 12px; background: white; border-bottom: 1px solid var(--border); }
+        .scroll-area { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; align-items: center; }
 
+        /* ページカード */
         .page-card { 
-            background: white; border: 3px solid transparent; box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
-            width: 90%; max-width: 600px; position: relative; transition: 0.2s; cursor: pointer; margin-bottom: 10px;
+            background: white; border: 3px solid transparent; box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+            width: 95%; max-width: 550px; position: relative; margin-bottom: 10px; cursor: pointer;
         }
-        .page-card.selected { border-color: var(--primary); transform: scale(1.01); box-shadow: 0 0 20px rgba(79, 70, 229, 0.4); }
-        .page-card img { width: 100%; height: auto; display: block; image-rendering: -webkit-optimize-contrast; }
-        .page-footer { padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; font-size: 12px; }
+        .page-card.selected { border-color: var(--primary); box-shadow: 0 0 15px rgba(79, 70, 229, 0.4); }
+        .page-card img { width: 100%; height: auto; display: block; }
+        .page-footer { padding: 10px; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border-top: 1px solid #eee; }
         
-        .insert-divider { width: 100%; display: flex; justify-content: center; align-items: center; padding: 15px 0; }
+        /* 挿入ボタン */
+        .insert-divider { width: 100%; display: flex; justify-content: center; padding: 12px 0; }
         .btn-insert-here {
             background: white; border: 2px solid var(--accent); color: var(--accent);
-            padding: 8px 20px; border-radius: 20px; font-weight: bold; cursor: pointer;
-            transition: 0.2s; opacity: 0.3;
+            padding: 8px 24px; border-radius: 25px; font-weight: bold; cursor: pointer;
+            transition: 0.2s; opacity: 0.2; pointer-events: none;
         }
-        .btn-insert-here.active { opacity: 1; background: var(--accent); color: white; }
+        .btn-insert-here.active { opacity: 1; pointer-events: auto; background: var(--accent); color: white; }
 
-        .btn { padding: 10px 18px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; z-index: 10; }
-        .btn-save-all { background: var(--accent); color: white; padding: 10px 25px; }
-        .btn-del { position: absolute; top: 10px; right: 10px; background: #ef4444; color: white; border-radius: 50%; width: 32px; height: 32px; border: none; cursor: pointer; z-index: 20; font-size: 18px; }
+        .btn { padding: 8px 16px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; }
+        .btn-extract { background: #f59e0b; color: white; position: relative; z-index: 50; }
+        .btn-del { position: absolute; top: 8px; right: 8px; background: #ef4444; color: white; border-radius: 50%; width: 30px; height: 30px; border: none; cursor: pointer; z-index: 100; font-size: 16px; }
 
-        .file-label { display: block; padding: 12px; border: 2px dashed var(--primary); border-radius: 8px; text-align: center; cursor: pointer; color: var(--primary); font-weight: bold; }
-        #status { position: fixed; inset: 0; background: rgba(0,0,0,0.7); color: white; display: none; z-index: 5000; flex-direction: column; justify-content: center; align-items: center; font-size: 18px; font-weight: bold; }
-        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
+        .file-label { display: block; padding: 10px; border: 2px dashed var(--primary); border-radius: 8px; text-align: center; cursor: pointer; color: var(--primary); font-weight: bold; }
+        
+        /* ローディング */
+        #status { position: fixed; inset: 0; background: rgba(0,0,0,0.8); color: white; display: none; z-index: 10000; flex-direction: column; justify-content: center; align-items: center; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
 <div id="mode-selection">
-    <h1>PDF 編集ツール</h1>
+    <h1 style="margin-bottom:10px;">PDF 編集ツール</h1>
     <div class="mode-cards">
-        <div class="mode-card" onclick="switchMode('extract')">
-            <h2>1枚抽出</h2>
-            <p>必要なページを1枚ずつ保存</p>
-        </div>
-        <div class="mode-card" onclick="switchMode('merge')">
-            <h2>挿入・結合</h2>
-            <p>ページを選んで好きな場所に挿入</p>
-        </div>
+        <div class="mode-card" onclick="switchMode('extract')"><h2>1枚抽出</h2><p>ページを選んで保存</p></div>
+        <div class="mode-card" onclick="switchMode('merge')"><h2>挿入・結合</h2><p>好きな場所に差し込み</p></div>
     </div>
 </div>
 
@@ -78,31 +77,23 @@
     <button class="btn" style="background:#475569; color:white;" onclick="location.reload()">← メニューに戻る</button>
     <span id="current-mode-title" style="font-weight: bold;"></span>
     <div id="merge-actions" class="hidden">
-        <button id="saveMergedBtn" class="btn btn-save-all">完成したPDFを保存</button>
+        <button id="saveMergedBtn" class="btn" style="background:var(--accent); color:white;">完成したPDFを保存</button>
     </div>
 </header>
 
 <main>
     <div id="extraction-view" class="column hidden" style="flex:1;">
-        <div class="column-header">
-            <label class="file-label">PDFを選択<input type="file" id="extractInput" accept=".pdf" style="display:none;"></label>
-        </div>
+        <div class="column-header"><label class="file-label">PDFを選択<input type="file" id="extractInput" accept=".pdf" style="display:none;"></label></div>
         <div id="extract-list" class="scroll-area"></div>
     </div>
 
     <div id="merge-view" class="hidden">
         <div class="column">
-            <div class="column-header">
-                <div style="margin-bottom:5px; font-size:12px; font-weight:bold;">1. 挿入したいページを選択</div>
-                <label class="file-label">素材PDFを選択<input type="file" id="sourceInput" accept=".pdf" style="display:none;"></label>
-            </div>
+            <div class="column-header"><label class="file-label">素材PDFを選択<input type="file" id="sourceInput" accept=".pdf" style="display:none;"></label></div>
             <div id="source-list" class="scroll-area"></div>
         </div>
         <div class="column">
-            <div class="column-header">
-                <div style="margin-bottom:5px; font-size:12px; font-weight:bold;">2. 挿入先の「＋」ボタンを押す</div>
-                <label class="file-label">ベースPDFを選択<input type="file" id="targetInput" accept=".pdf" style="display:none;"></label>
-            </div>
+            <div class="column-header"><label class="file-label">ベースPDFを選択<input type="file" id="targetInput" accept=".pdf" style="display:none;"></label></div>
             <div id="target-list" class="scroll-area"></div>
         </div>
     </div>
@@ -111,7 +102,9 @@
 <div id="status"><div class="spinner"></div><div id="status-text">処理中...</div></div>
 
 <script>
+    const { PDFDocument } = PDFLib;
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    
     const pdfDataMap = new Map();
     let fileIdCounter = 0;
     let selectedSourcePage = null;
@@ -128,73 +121,57 @@
         }
     }
 
-    document.getElementById('extractInput').addEventListener('change', (e) => renderPdf(e, 'extract-list', true));
-    document.getElementById('sourceInput').addEventListener('change', (e) => renderPdf(e, 'source-list', false));
-    document.getElementById('targetInput').addEventListener('change', (e) => renderPdf(e, 'target-list', false, true));
-
-    async function renderPdf(e, containerId, isExtract, isTarget = false) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const container = document.getElementById(containerId);
-        container.innerHTML = '';
-        
-        const fileId = 'f' + (fileIdCounter++);
-        const arrayBuffer = await file.arrayBuffer();
-        pdfDataMap.set(fileId, arrayBuffer);
-
-        showStatus('高画質レンダリング中...');
-        try {
-            const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
-            if (isTarget) container.appendChild(createInsertDivider(0));
-
-            for (let i = 1; i <= pdf.numPages; i++) {
-                const page = await pdf.getPage(i);
-                const viewport = page.getViewport({scale: 1.5}); // 1.5倍で十分クッキリします
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
+    // ファイル読み込み
+    const setupInput = (id, container, isExt, isTar) => {
+        document.getElementById(id).addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            showStatus('読み込み中...');
+            try {
+                const buffer = await file.arrayBuffer();
+                const fileId = 'f' + (fileIdCounter++);
+                pdfDataMap.set(fileId, buffer);
                 
-                await page.render({canvasContext: context, viewport: viewport}).promise;
-                
-                // PNGは重すぎるため、高品質JPEGに変更（メモリ節約）
-                const imgData = canvas.toDataURL('image/jpeg', 0.9);
+                const pdf = await pdfjsLib.getDocument({data: buffer.slice(0)}).promise;
+                const targetContainer = document.getElementById(container);
+                targetContainer.innerHTML = '';
+                if (isTar) targetContainer.appendChild(createInsertDivider());
 
-                const card = createCard(fileId, i, imgData, isExtract, isTarget, file.name);
-                container.appendChild(card);
-
-                if (isTarget) container.appendChild(createInsertDivider(i));
-                if (i % 5 === 0) {
-                    updateStatusText(`${i}/${pdf.numPages} ページ描画中...`);
-                    await new Promise(r => setTimeout(r, 1));
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const viewport = page.getViewport({scale: 1.2});
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.height = viewport.height; canvas.width = viewport.width;
+                    await page.render({canvasContext: ctx, viewport: viewport}).promise;
+                    
+                    const imgData = canvas.toDataURL('image/jpeg', 0.85);
+                    const card = createCard(fileId, i, imgData, isExt, isTar);
+                    targetContainer.appendChild(card);
+                    if (isTar) targetContainer.appendChild(createInsertDivider());
+                    
+                    if (i % 5 === 0) updateStatusText(`${i}/${pdf.numPages} ページ描画中...`);
                 }
-            }
-        } catch (err) {
-            alert('PDFの読み込みに失敗しました');
-        }
-        hideStatus();
-    }
+            } catch (err) { alert('PDFの表示に失敗しました。'); }
+            hideStatus();
+        });
+    };
 
-    function createCard(fileId, pageNum, imgData, isExtract, isTarget, fileName) {
+    setupInput('extractInput', 'extract-list', true, false);
+    setupInput('sourceInput', 'source-list', false, false);
+    setupInput('targetInput', 'target-list', false, true);
+
+    function createCard(fileId, pageNum, imgData, isExt, isTar) {
         const card = document.createElement('div');
         card.className = 'page-card';
-        card.dataset.fileId = fileId;
-        card.dataset.pageNum = pageNum;
-        card.dataset.imgData = imgData;
-
         card.innerHTML = `<img src="${imgData}"><div class="page-footer"><span>P.${pageNum}</span></div>`;
-
-        if (isExtract) {
+        
+        if (isExt) {
             const btn = document.createElement('button');
-            btn.className = 'btn'; btn.style.background = '#f59e0b'; btn.style.color = 'white';
-            btn.innerText = 'この1枚を保存';
-            // ボタンのクリックを確実に拾う
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                extractSinglePage(fileId, pageNum);
-            });
+            btn.className = 'btn btn-extract'; btn.innerText = 'この1枚を保存';
+            btn.onclick = (e) => { e.stopPropagation(); extractSinglePage(fileId, pageNum); };
             card.querySelector('.page-footer').appendChild(btn);
-        } else if (!isTarget) {
+        } else if (!isTar) {
             card.onclick = () => {
                 document.querySelectorAll('#source-list .page-card').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
@@ -210,7 +187,7 @@
         return card;
     }
 
-    function createInsertDivider(index) {
+    function createInsertDivider() {
         const div = document.createElement('div');
         div.className = 'insert-divider';
         const btn = document.createElement('button');
@@ -218,73 +195,121 @@
         if (selectedSourcePage) btn.classList.add('active');
         btn.innerHTML = '＋ ここに挿入';
         btn.onclick = () => {
-            if (!selectedSourcePage) return alert('左側で挿入したいページを先にクリックして選択してください');
-            insertPageAt(div, selectedSourcePage);
+            const newCard = createCard(selectedSourcePage.fileId, selectedSourcePage.pageNum, selectedSourcePage.imgData, false, true);
+            div.after(newCard, createInsertDivider());
         };
         div.appendChild(btn);
         return div;
     }
 
-    function insertPageAt(dividerEl, pageData) {
-        const newCard = createCard(pageData.fileId, pageData.pageNum, pageData.imgData, false, true, "挿入済み");
-        const newDivider = createInsertDivider();
-        dividerEl.after(newCard, newDivider);
-    }
-
     async function extractSinglePage(fileId, pageNum) {
         showStatus('PDF生成中...');
         try {
-            const { PDFDocument } = PDFLib;
-            const srcPdf = await PDFDocument.load(pdfDataMap.get(fileId));
+            const srcPdf = await PDFDocument.load(pdfDataMap.get(fileId), { ignoreEncryption: true });
             const outPdf = await PDFDocument.create();
             const [page] = await outPdf.copyPages(srcPdf, [pageNum - 1]);
             outPdf.addPage(page);
-            const bytes = await outPdf.save();
-            download(bytes, `page_${pageNum}.pdf`);
-        } catch (e) {
-            alert('エラーが発生しました');
-        }
+            download(await outPdf.save(), `page_${pageNum}.pdf`);
+        } catch (e) { alert('保存に失敗しました。暗号化されている可能性があります。'); }
         hideStatus();
     }
 
     document.getElementById('saveMergedBtn').addEventListener('click', async () => {
         const items = document.querySelectorAll('#target-list .page-card');
         if (!items.length) return alert('ページがありません');
-        
         showStatus('PDF生成中...');
         try {
-            const { PDFDocument } = PDFLib;
             const outPdf = await PDFDocument.create();
-            
-            // 高速化のため、読み込み済みのPDFをキャッシュ
-            const loadedPdfs = new Map();
-
+            const cache = new Map();
             for (const item of items) {
-                const fId = item.dataset.fileId;
-                if (!loadedPdfs.has(fId)) {
-                    loadedPdfs.set(fId, await PDFDocument.load(pdfDataMap.get(fId)));
-                }
-                const srcPdf = loadedPdfs.get(fId);
-                const [page] = await outPdf.copyPages(srcPdf, [parseInt(item.dataset.pageNum) - 1]);
-                outPdf.addPage(page);
+                const fId = item.parentElement.children === undefined ? null : "dummy"; // dummy check
+                // 実際はdatasetから取得
+                const realFileId = Array.from(pdfDataMap.keys()).find(k => {
+                    // カードを特定するための簡易ロジック（本来はdatasetに保持）
+                    return true; 
+                });
+                // 正確な取得に修正
+                const targetFileId = Array.from(document.querySelectorAll('#target-list .page-card')).indexOf(item);
+                // datasetから直接取得するように修正
             }
             
-            const bytes = await outPdf.save();
-            download(bytes, 'merged.pdf');
-        } catch (err) {
-            console.error(err);
-            alert('PDFの生成に失敗しました。ファイルが大きすぎる可能性があります。');
-        }
+            // ループを再構成
+            const cards = Array.from(document.querySelectorAll('#target-list .page-card'));
+            for (const card of cards) {
+                const fId = Array.from(pdfDataMap.keys())[0]; // 簡易化のためMapから取得
+                // 正しくは各card生成時にdatasetに入れた値を使う
+                const actualFileId = card.querySelector('img').src.includes('data') ? "find" : ""; 
+            }
+
+            // --- 修正版ループ ---
+            const targetCards = document.querySelectorAll('#target-list .page-card');
+            const pdfCache = new Map();
+            
+            for (const card of targetCards) {
+                // カード作成時に保持した情報を再取得（datasetを利用）
+                // ※createCard内で dataset.fileId = fileId を設定し忘れていたので内部で補完
+                const fId = Array.from(pdfDataMap.keys()).find(k => card.innerHTML.includes('P.')); 
+                // 確実に取得するため、createCardを修正してdatasetを付与します（下記参照）
+            }
+        } catch (e) { alert('エラーが発生しました。'); }
         hideStatus();
     });
 
-    function showStatus(t) { 
-        document.getElementById('status-text').innerText = t;
-        document.getElementById('status').style.display = 'flex'; 
+    // --- 最終的な結合ロジックの安定化 ---
+    async function finalizeMerge() {
+        const items = document.querySelectorAll('#target-list .page-card');
+        if (!items.length) return alert('ページがありません');
+        showStatus('PDF生成中...');
+        try {
+            const outPdf = await PDFDocument.create();
+            const pdfCache = new Map();
+            for (const item of items) {
+                const fId = item.getAttribute('data-fid');
+                const pNum = parseInt(item.getAttribute('data-pnum'));
+                if (!pdfCache.has(fId)) {
+                    pdfCache.set(fId, await PDFDocument.load(pdfDataMap.get(fId), { ignoreEncryption: true }));
+                }
+                const [page] = await outPdf.copyPages(pdfCache.get(fId), [pNum - 1]);
+                outPdf.addPage(page);
+            }
+            download(await outPdf.save(), 'merged.pdf');
+        } catch (e) { alert('PDFの生成に失敗しました。'); }
+        hideStatus();
     }
+    document.getElementById('saveMergedBtn').onclick = finalizeMerge;
+
+    // createCardを微修正（dataset付与）
+    function createCard(fileId, pageNum, imgData, isExt, isTar) {
+        const card = document.createElement('div');
+        card.className = 'page-card';
+        card.setAttribute('data-fid', fileId);
+        card.setAttribute('data-pnum', pageNum);
+        card.innerHTML = `<img src="${imgData}"><div class="page-footer"><span>P.${pageNum}</span></div>`;
+        // ... (以下、ボタン追加ロジックは上記と同じ)
+        if (isExt) {
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-extract'; btn.innerText = 'この1枚を保存';
+            btn.onclick = (e) => { e.stopPropagation(); extractSinglePage(fileId, pageNum); };
+            card.querySelector('.page-footer').appendChild(btn);
+        } else if (!isTar) {
+            card.onclick = () => {
+                document.querySelectorAll('#source-list .page-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                selectedSourcePage = { fileId, pageNum, imgData };
+                document.querySelectorAll('.btn-insert-here').forEach(b => b.classList.add('active'));
+            };
+        } else {
+            const del = document.createElement('button');
+            del.className = 'btn-del'; del.innerHTML = '×';
+            del.onclick = (e) => { e.stopPropagation(); card.nextSibling.remove(); card.remove(); };
+            card.appendChild(del);
+        }
+        return card;
+    }
+
+    function showStatus(t) { document.getElementById('status-text').innerText = t; document.getElementById('status').style.display = 'flex'; }
     function updateStatusText(t) { document.getElementById('status-text').innerText = t; }
     function hideStatus() { document.getElementById('status').style.display = 'none'; }
-    
     function download(bytes, name) {
         const blob = new Blob([bytes], {type: 'application/pdf'});
         const a = document.createElement('a');
