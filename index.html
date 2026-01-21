@@ -2,386 +2,217 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDFビジュアル編集ツール</title>
-    <!-- ライブラリの読み込み -->
+    <title>爆速PDF編集ツール | 視覚的結合・抽出</title>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
 
     <style>
-        :root {
-            --primary: #4f46e5;
-            --bg: #f3f4f6;
-            --panel: #ffffff;
-            --border: #d1d5db;
-        }
+        :root { --primary: #4f46e5; --bg: #f1f5f9; --border: #cbd5e1; }
+        body { font-family: 'Noto Sans JP', sans-serif; margin: 0; background: var(--bg); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        header { background: #1e293b; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 100; }
+        
+        main { display: grid; grid-template-columns: 350px 1fr; flex: 1; overflow: hidden; }
 
-        body {
-            font-family: 'Noto Sans JP', sans-serif;
-            margin: 0;
-            background-color: var(--bg);
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
-        }
+        /* 左側：ファイル選択・素材エリア */
+        #source-area { background: white; border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+        .upload-box { padding: 15px; border-bottom: 1px solid var(--border); background: #f8fafc; }
+        .btn-upload { display: block; width: 100%; padding: 10px; background: var(--primary); color: white; text-align: center; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        #source-list-container { flex: 1; overflow-y: auto; padding: 10px; }
 
-        /* ヘッダー */
-        header {
-            background-color: #1f2937;
-            color: white;
-            padding: 10px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
+        /* 右側：作成エリア */
+        #target-area { padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .area-title { display: flex; justify-content: space-between; align-items: center; }
+        
+        /* ページリスト共通 */
+        .page-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px; min-height: 150px; padding: 15px; border-radius: 8px; }
+        #target-list { background: white; border: 2px dashed var(--border); transition: 0.2s; }
+        #target-list.sortable-drag { background: #eef2ff; }
 
-        .logo { font-weight: bold; font-size: 1.2rem; }
-
-        /* メインレイアウト */
-        main {
-            display: grid;
-            grid-template-columns: 380px 1fr;
-            flex: 1;
-            overflow: hidden;
-        }
-
-        /* 左パネル：ファイル選択とページ一覧 */
-        #source-panel {
-            background: var(--panel);
-            border-right: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-        }
-
-        .panel-header {
-            padding: 15px;
-            border-bottom: 1px solid var(--border);
-            background: #f9fafb;
-        }
-
-        .file-select-btn {
-            display: block;
-            width: 100%;
-            padding: 12px;
-            background: var(--primary);
-            color: white;
-            text-align: center;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: opacity 0.2s;
-        }
-        .file-select-btn:hover { opacity: 0.9; }
-
-        #source-scroll {
-            flex: 1;
-            overflow-y: auto;
-            padding: 15px;
-        }
-
-        /* 右パネル：作成エリア */
-        #target-panel {
-            padding: 20px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .target-header {
-            margin-bottom: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        /* ページカードのスタイル */
-        .page-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-            gap: 15px;
-            min-height: 150px;
-            padding: 10px;
-            border: 2px dashed transparent;
-        }
-
-        #target-list {
-            background: white;
-            border: 2px dashed var(--border);
-            border-radius: 12px;
-            padding: 20px;
-        }
-
-        .page-card {
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 5px;
-            cursor: grab;
-            position: relative;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            user-select: none;
-        }
-        .page-card:hover { border-color: var(--primary); }
-        .page-card img { width: 100%; height: auto; display: block; border-radius: 2px; }
-        .page-info { font-size: 10px; color: #6b7280; text-align: center; margin-top: 4px; }
+        /* ページカード */
+        .page-card { background: white; border: 1px solid var(--border); border-radius: 4px; padding: 4px; cursor: grab; position: relative; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .page-card:active { cursor: grabbing; }
+        .page-card img { width: 100%; height: auto; display: block; pointer-events: none; }
+        .page-info { font-size: 9px; color: #64748b; text-align: center; margin-top: 3px; white-space: nowrap; overflow: hidden; }
 
         /* 削除ボタン */
-        .delete-btn {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            background: #ef4444;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            font-size: 12px;
-            cursor: pointer;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 10;
-        }
-        #target-list .delete-btn { display: flex; }
+        .del-btn { position: absolute; top: -6px; right: -6px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 12px; cursor: pointer; display: none; align-items: center; justify-content: center; }
+        #target-list .del-btn { display: flex; }
 
-        /* ファイルごとの区切り */
-        .file-group {
-            margin-bottom: 20px;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 10px;
-        }
-        .file-title {
-            font-size: 11px;
-            font-weight: bold;
-            color: #374151;
-            margin-bottom: 8px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
+        /* ファイルごとの塊 */
+        .file-group { margin-bottom: 15px; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; }
+        .file-group-header { background: #f1f5f9; padding: 6px 10px; font-size: 11px; font-weight: bold; display: flex; justify-content: space-between; }
 
-        /* 保存ボタン */
-        .save-btn {
-            background: #10b981;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .save-btn:disabled { background: #9ca3af; }
+        .btn-save { background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-save:disabled { background: #94a3b8; }
 
-        /* ローディング */
-        #loader {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(255,255,255,0.8);
-            z-index: 100;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid var(--primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 10px;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        .empty-msg {
-            grid-column: 1 / -1;
-            text-align: center;
-            color: #9ca3af;
-            padding: 40px 0;
-        }
+        /* ローディング表示 */
+        #status-bar { position: fixed; bottom: 20px; left: 20px; background: rgba(0,0,0,0.8); color: white; padding: 8px 15px; border-radius: 20px; font-size: 12px; display: none; z-index: 1000; }
+        
+        .empty-hint { grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 40px 0; font-size: 13px; }
     </style>
 </head>
 <body>
 
-<div id="loader">
-    <div class="spinner"></div>
-    <div id="loader-text">処理中...</div>
-</div>
-
 <header>
-    <div class="logo">PDF Visual Editor</div>
-    <button id="downloadBtn" class="save-btn">新しいPDFとして保存</button>
+    <div style="font-weight: bold;">PDF Visual Editor</div>
+    <button id="saveBtn" class="btn-save">新しいPDFを保存</button>
 </header>
 
 <main>
-    <!-- 左側：ファイル選択とページプール -->
-    <div id="source-panel">
-        <div class="panel-header">
-            <label class="file-select-btn">
+    <div id="source-area">
+        <div class="upload-box">
+            <label class="btn-upload">
                 PDFファイルを選択
                 <input type="file" id="fileInput" accept=".pdf" multiple style="display: none;">
             </label>
-            <p style="font-size: 11px; color: #6b7280; margin: 8px 0 0 0;">※ファイルを選択するとページが表示されます</p>
         </div>
-        <div id="source-scroll">
-            <div id="source-container">
-                <div class="empty-msg">ファイルが選択されていません</div>
-            </div>
+        <div id="source-list-container">
+            <div class="empty-hint">ファイルを選択してください</div>
         </div>
     </div>
 
-    <!-- 右側：作成エリア -->
-    <div id="target-panel">
-        <div class="target-header">
-            <h2 style="margin: 0; font-size: 1.1rem;">作成エリア（ここにページを並べる）</h2>
-            <button onclick="clearTarget()" style="font-size: 12px; cursor: pointer; background: none; border: 1px solid #ccc; border-radius: 4px; padding: 2px 8px;">リセット</button>
+    <div id="target-area">
+        <div class="area-title">
+            <h2 style="margin:0; font-size: 1.1rem;">作成エリア（ここにドラッグして並べる）</h2>
+            <button onclick="location.reload()" style="font-size:11px; cursor:pointer;">リセット</button>
         </div>
         <div id="target-list" class="page-grid">
-            <div class="empty-msg">左からページをドラッグ＆ドロップしてください</div>
+            <div class="empty-hint">左からページを好きな位置にドロップしてください</div>
         </div>
     </div>
 </main>
 
+<div id="status-bar"></div>
+
 <script>
-    // PDF.jsの設定
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
     const fileInput = document.getElementById('fileInput');
-    const sourceContainer = document.getElementById('source-container');
+    const sourceContainer = document.getElementById('source-list-container');
     const targetList = document.getElementById('target-list');
-    const loader = document.getElementById('loader');
-    
-    const pdfDataMap = new Map(); // ファイルID -> ArrayBuffer
+    const statusBar = document.getElementById('status-bar');
+    const pdfDataMap = new Map();
     let fileIdCounter = 0;
 
-    // SortableJSの設定（右側の作成エリア）
+    // --- SortableJS 設定 ---
+    // 右側（作成エリア）：並べ替え可能、左からの受け入れ可能
     new Sortable(targetList, {
         group: 'pdf-pages',
         animation: 150,
+        ghostClass: 'sortable-ghost',
         onAdd: function (evt) {
             const item = evt.item;
-            // 削除ボタンを追加
-            if (!item.querySelector('.delete-btn')) {
+            if (!item.querySelector('.del-btn')) {
                 const btn = document.createElement('button');
-                btn.className = 'delete-btn';
+                btn.className = 'del-btn';
                 btn.innerHTML = '×';
-                btn.onclick = () => { item.remove(); checkEmpty(); };
+                btn.onclick = () => { item.remove(); updateHint(); };
                 item.appendChild(btn);
             }
-            checkEmpty();
+            updateHint();
         }
     });
 
-    // ファイル選択時の処理
+    // ファイル選択
     fileInput.addEventListener('change', async (e) => {
-        const files = e.target.files;
+        const files = Array.from(e.target.files);
         if (!files.length) return;
 
-        loader.style.display = 'flex';
-        if (sourceContainer.querySelector('.empty-msg')) sourceContainer.innerHTML = '';
+        if (sourceContainer.querySelector('.empty-hint')) sourceContainer.innerHTML = '';
 
         for (const file of files) {
             const fileId = 'f' + (fileIdCounter++);
             const arrayBuffer = await file.arrayBuffer();
             pdfDataMap.set(fileId, arrayBuffer);
 
-            // ファイルごとのグループ表示を作成
+            // グループ作成
             const group = document.createElement('div');
             group.className = 'file-group';
-            group.innerHTML = `<div class="file-title">${file.name}</div>`;
-            
+            group.innerHTML = `<div class="file-group-header"><span>${file.name}</span></div>`;
             const grid = document.createElement('div');
             grid.className = 'page-grid';
             group.appendChild(grid);
             sourceContainer.appendChild(group);
 
-            // 左側のグリッドをSortableにする（コピーモード）
+            // 左側の各ファイルグリッドをSortableにする（コピーモード）
             new Sortable(grid, {
                 group: { name: 'pdf-pages', pull: 'clone', put: false },
                 sort: false,
                 animation: 150
             });
 
-            // PDFをレンダリングしてサムネイル作成
+            // 非同期レンダリング（ブラウザを固めない）
+            showStatus(`${file.name} を読み込み中...`);
             const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+            
             for (let i = 1; i <= pdf.numPages; i++) {
                 const page = await pdf.getPage(i);
-                const viewport = page.getViewport({scale: 0.2});
+                const viewport = page.getViewport({scale: 0.2}); // 軽量化のためスケールダウン
                 const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
                 canvas.height = viewport.height;
                 canvas.width = viewport.width;
-                await page.render({canvasContext: context, viewport: viewport}).promise;
+                
+                await page.render({canvasContext: canvas.getContext('2d'), viewport: viewport}).promise;
 
                 const card = document.createElement('div');
                 card.className = 'page-card';
                 card.dataset.fileId = fileId;
                 card.dataset.pageNum = i;
-                card.innerHTML = `
-                    <img src="${canvas.toDataURL()}">
-                    <div class="page-info">P.${i}</div>
-                `;
+                card.innerHTML = `<img src="${canvas.toDataURL('image/jpeg', 0.7)}"><div class="page-info">P.${i}</div>`;
                 grid.appendChild(card);
+
+                // 1ページごとにメインスレッドを解放してフリーズ防止
+                if (i % 3 === 0) {
+                    showStatus(`${file.name}: ${i} / ${pdf.numPages} ページ描画中...`);
+                    await new Promise(r => setTimeout(r, 10)); 
+                }
             }
         }
-        loader.style.display = 'none';
-        fileInput.value = ''; // 同じファイルを再度選べるようにリセット
+        hideStatus();
+        fileInput.value = '';
     });
 
-    function checkEmpty() {
+    function updateHint() {
         const hasItems = targetList.querySelectorAll('.page-card').length > 0;
-        const msg = targetList.querySelector('.empty-msg');
-        if (hasItems && msg) msg.style.display = 'none';
-        if (!hasItems && msg) msg.style.display = 'block';
-    }
-
-    function clearTarget() {
-        if (confirm('作成エリアを空にしますか？')) {
-            targetList.querySelectorAll('.page-card').forEach(el => el.remove());
-            checkEmpty();
+        const hint = targetList.querySelector('.empty-hint');
+        if (hasItems && hint) hint.style.display = 'none';
+        if (!hasItems && !hint) {
+            targetList.innerHTML = '<div class="empty-hint">左からページを好きな位置にドロップしてください</div>';
         }
     }
 
-    // 保存処理
-    document.getElementById('downloadBtn').addEventListener('click', async () => {
+    function showStatus(text) {
+        statusBar.innerText = text;
+        statusBar.style.display = 'block';
+    }
+    function hideStatus() { statusBar.style.display = 'none'; }
+
+    // 保存
+    document.getElementById('saveBtn').addEventListener('click', async () => {
         const items = targetList.querySelectorAll('.page-card');
-        if (items.length === 0) return alert('ページを配置してください');
+        if (!items.length) return alert('ページを配置してください');
 
-        loader.style.display = 'flex';
+        showStatus('PDFを生成しています...');
         try {
-            const { PDFDocument } = PDFLib;
-            const outPdf = await PDFDocument.create();
-
+            const outPdf = await PDFLib.PDFDocument.create();
             for (const item of items) {
-                const fileId = item.dataset.fileId;
-                const pageNum = parseInt(item.dataset.pageNum);
-                
-                const srcBytes = pdfDataMap.get(fileId);
-                const srcPdf = await PDFDocument.load(srcBytes);
-                const [copiedPage] = await outPdf.copyPages(srcPdf, [pageNum - 1]);
-                outPdf.addPage(copiedPage);
+                const srcPdf = await PDFLib.PDFDocument.load(pdfDataMap.get(item.dataset.fileId));
+                const [page] = await outPdf.copyPages(srcPdf, [parseInt(item.dataset.pageNum) - 1]);
+                outPdf.addPage(page);
             }
-
-            const pdfBytes = await outPdf.save();
-            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-            const url = URL.createObjectURL(blob);
+            const bytes = await outPdf.save();
+            const blob = new Blob([bytes], { type: 'application/pdf' });
             const a = document.createElement('a');
-            a.href = url;
-            a.download = 'edited_document.pdf';
+            a.href = URL.createObjectURL(blob);
+            a.download = 'combined_document.pdf';
             a.click();
-            URL.revokeObjectURL(url);
         } catch (err) {
-            console.error(err);
-            alert('保存中にエラーが発生しました');
+            alert('エラーが発生しました');
         }
-        loader.style.display = 'none';
+        hideStatus();
     });
 </script>
 </body>
