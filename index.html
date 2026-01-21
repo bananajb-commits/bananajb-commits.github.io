@@ -1,447 +1,358 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PDF編集ツール | 高機能版</title>
-<!-- PDF-Libの読み込み -->
-<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-<!-- Google Fonts (Noto Sans JP) -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ビジュアルPDF編集ツール</title>
+    <!-- ライブラリ読み込み -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 
-<style>
-  :root {
-    --primary-color: #4f46e5; /* インディゴ */
-    --primary-hover: #4338ca;
-    --bg-color: #f3f4f6;
-    --card-bg: #ffffff;
-    --text-main: #1f2937;
-    --text-sub: #6b7280;
-    --border-color: #e5e7eb;
-    --accent-bg: #eef2ff;
-  }
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --border: #e2e8f0;
+        }
 
-  * { box-sizing: border-box; }
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
 
-  body {
-    font-family: 'Noto Sans JP', sans-serif;
-    background-color: var(--bg-color);
-    color: var(--text-main);
-    margin: 0;
-    padding: 20px;
-    line-height: 1.6;
-    display: flex;
-    justify-content: center;
-    min-height: 100vh;
-  }
+        /* ヘッダー */
+        header {
+            background: white;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
 
-  .container {
-    width: 100%;
-    max-width: 800px;
-    margin: 0 auto;
-  }
+        .logo { font-weight: 700; font-size: 1.2rem; color: var(--primary); display: flex; align-items: center; gap: 8px; }
 
-  header {
-    text-align: center;
-    margin-bottom: 40px;
-  }
+        /* メインレイアウト */
+        main {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            flex: 1;
+            overflow: hidden;
+        }
 
-  h1 {
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--text-main);
-    margin: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-  }
+        /* サイドバー（読み込み済みページ） */
+        #sidebar {
+            background: #fff;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+        }
 
-  /* カードスタイル */
-  .card {
-    background-color: var(--card-bg);
-    border-radius: 16px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    padding: 30px;
-    margin-bottom: 30px;
-    transition: transform 0.2s ease;
-  }
+        /* メインエリア（書き出し構成） */
+        #workspace {
+            padding: 2rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
 
-  .card h2 {
-    font-size: 18px;
-    color: var(--primary-color);
-    border-bottom: 2px solid var(--accent-bg);
-    padding-bottom: 10px;
-    margin-top: 0;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
+        /* サムネイルリストの共通設定 */
+        .page-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 15px;
+            min-height: 150px;
+            padding: 10px;
+            border: 2px dashed transparent;
+            transition: 0.2s;
+        }
 
-  /* フォーム要素 */
-  .form-group {
-    margin-bottom: 20px;
-  }
+        #export-list {
+            background: rgba(79, 70, 229, 0.02);
+            border-radius: 12px;
+            border: 2px dashed var(--border);
+            padding: 20px;
+        }
 
-  label {
-    display: block;
-    font-weight: 500;
-    margin-bottom: 8px;
-    font-size: 14px;
-    color: var(--text-main);
-  }
+        /* ページカードのスタイル */
+        .page-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px;
+            cursor: grab;
+            position: relative;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+            user-select: none;
+        }
+        .page-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .page-card img {
+            width: 100%;
+            height: auto;
+            border: 1px solid #eee;
+            display: block;
+        }
+        .page-info {
+            font-size: 10px;
+            color: #64748b;
+            margin-top: 5px;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
 
-  .input-wrapper {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
+        /* 削除ボタン */
+        .btn-delete {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        #export-list .btn-delete { display: flex; }
 
-  /* ファイル入力の装飾 */
-  input[type="file"] {
-    font-size: 14px;
-    padding: 10px;
-    border: 1px dashed #cbd5e1;
-    border-radius: 8px;
-    background-color: #f8fafc;
-    width: 100%;
-    cursor: pointer;
-    transition: border-color 0.3s;
-  }
-  input[type="file"]:hover {
-    border-color: var(--primary-color);
-    background-color: var(--accent-bg);
-  }
+        /* ボタン類 */
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: 0.2s;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { opacity: 0.9; }
+        .btn-outline { background: white; border: 1px solid var(--border); }
 
-  /* 数値入力 */
-  input[type="number"] {
-    padding: 10px 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 16px;
-    width: 100%;
-    transition: border-color 0.3s, box-shadow 0.3s;
-  }
-  input[type="number"]:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
-  }
+        .upload-area {
+            margin-bottom: 1rem;
+        }
 
-  /* 説明書き */
-  .note {
-    font-size: 12px;
-    color: var(--text-sub);
-    margin-top: 4px;
-  }
+        /* ローディング表示 */
+        #loader {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(255,255,255,0.8);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+        }
 
-  /* 挿入セクションの分割レイアウト */
-  .split-section {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
-  @media (min-width: 600px) {
-    .split-section {
-      grid-template-columns: 1fr 1fr;
-    }
-  }
-
-  .sub-card {
-    background-color: #f9fafb;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 20px;
-  }
-  .sub-card h3 {
-    font-size: 15px;
-    margin-top: 0;
-    color: #4b5563;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .badge {
-    background-color: var(--primary-color);
-    color: white;
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 4px;
-    vertical-align: middle;
-  }
-
-  /* ボタン */
-  .btn-primary {
-    background-color: var(--primary-color);
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    font-size: 16px;
-    font-weight: 700;
-    border-radius: 8px;
-    cursor: pointer;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-    transition: background-color 0.3s, transform 0.1s;
-    margin-top: 10px;
-  }
-  .btn-primary:hover {
-    background-color: var(--primary-hover);
-  }
-  .btn-primary:active {
-    transform: scale(0.98);
-  }
-  .btn-primary:disabled {
-    background-color: #9ca3af;
-    cursor: not-allowed;
-  }
-
-  /* アイコン用SVGスタイル */
-  .icon { width: 20px; height: 20px; }
-
-</style>
+        .empty-msg {
+            grid-column: 1 / -1;
+            text-align: center;
+            color: #94a3b8;
+            padding: 40px;
+        }
+    </style>
 </head>
 <body>
 
-<div class="container">
-  <header>
-    <h1>
-      <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-      PDF 編集ツール
-    </h1>
-    <p style="color: var(--text-sub); font-size: 14px;">ブラウザ上で安全にPDFの抽出・結合ができます</p>
-  </header>
+<div id="loader">処理中...</div>
 
-  <!-- ① PDF 1ページ抽出 -->
-  <div class="card">
-    <h2>
-      <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path></svg>
-      1ページ抽出
-    </h2>
-    <div class="form-group">
-      <label>対象のPDFファイル</label>
-      <input type="file" id="extractPdf" accept=".pdf">
+<header>
+    <div class="logo">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+        PDF Visual Editor
     </div>
-    <div class="form-group">
-      <label>抽出するページ番号</label>
-      <input type="number" id="extractPage" min="1" placeholder="例: 3">
-      <span class="note">※指定した1ページだけを取り出して保存します。</span>
-    </div>
-    <button id="extractBtn" class="btn-primary">
-      <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-      抽出してダウンロード
+    <button id="downloadBtn" class="btn btn-primary">
+        新しいPDFを保存する
     </button>
-  </div>
+</header>
 
-  <!-- ② PDFページ挿入 -->
-  <div class="card">
-    <h2>
-      <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-      ページ挿入・結合
-    </h2>
-    
-    <div class="split-section">
-      <!-- ベースPDF -->
-      <div class="sub-card">
-        <h3><span class="badge">A</span> メインのPDF（挿入先）</h3>
-        <div class="form-group">
-          <label>ファイルを選択</label>
-          <input type="file" id="basePdf" accept=".pdf">
+<main>
+    <!-- 左側：素材置き場 -->
+    <div id="sidebar">
+        <div class="upload-area">
+            <label class="btn btn-outline" style="display: block; text-align: center;">
+                PDFを追加読み込み
+                <input type="file" id="pdfInput" accept=".pdf" multiple style="display: none;">
+            </label>
         </div>
-        <div class="form-group">
-          <label>挿入位置（ページ番号）</label>
-          <input type="number" id="insertPos" min="1" placeholder="例: 1">
-          <span class="note">※このページの<strong>後ろ</strong>に挿入されます。</span>
+        <div style="font-size: 13px; font-weight: bold; margin-bottom: 10px;">読み込んだページ (ドラッグして右へ)</div>
+        <div id="source-list" class="page-list" style="grid-template-columns: 1fr 1fr; overflow-y: auto;">
+            <div class="empty-msg">PDFを選択してください</div>
         </div>
-      </div>
-
-      <!-- 挿入PDF -->
-      <div class="sub-card">
-        <h3><span class="badge">B</span> 挿入するPDF（素材）</h3>
-        <div class="form-group">
-          <label>ファイルを選択</label>
-          <input type="file" id="insertPdf" accept=".pdf">
-        </div>
-        <div class="form-group">
-          <label>使用するページ番号</label>
-          <input type="number" id="insertPage" min="1" placeholder="例: 1">
-          <span class="note">※このファイルの指定ページを使います。</span>
-        </div>
-      </div>
     </div>
 
-    <button id="insertBtn" class="btn-primary" style="margin-top: 20px;">
-      <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-      結合してダウンロード
-    </button>
-  </div>
-</div>
+    <!-- 右側：構成エリア -->
+    <div id="workspace">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="margin: 0; font-size: 1.2rem;">書き出し構成</h2>
+            <span style="font-size: 12px; color: #64748b;">ここにページを並べてください（ドラッグで順序変更可能）</span>
+        </div>
+        <div id="export-list" class="page-list">
+            <div class="empty-msg">ここにページをドロップ</div>
+        </div>
+    </div>
+</main>
 
 <script>
-// ライブラリ読み込みチェック
-if (typeof PDFLib === 'undefined') {
-  alert('PDF-Lib ライブラリの読み込みに失敗しました。インターネット接続を確認してください。');
-}
-const { PDFDocument } = (typeof PDFLib !== 'undefined' ? PDFLib : {});
+    // PDF.jsのワーカー設定
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-let extractFileData = null;
-let baseFileData = null;
-let insertFileData = null;
+    const sourceList = document.getElementById('source-list');
+    const exportList = document.getElementById('export-list');
+    const loader = document.getElementById('loader');
+    
+    // 読み込んだPDFデータを保持するマップ
+    const pdfDataMap = new Map();
+    let fileCounter = 0;
 
-// ファイル読み込み処理
-document.getElementById("extractPdf").addEventListener("change", async (e) => {
-  if (e.target.files.length === 0) return;
-  extractFileData = await e.target.files[0].arrayBuffer();
-});
-document.getElementById("basePdf").addEventListener("change", async (e) => {
-  if (e.target.files.length === 0) return;
-  baseFileData = await e.target.files[0].arrayBuffer();
-});
-document.getElementById("insertPdf").addEventListener("change", async (e) => {
-  if (e.target.files.length === 0) return;
-  insertFileData = await e.target.files[0].arrayBuffer();
-});
+    // SortableJSの設定
+    new Sortable(sourceList, {
+        group: {
+            name: 'shared',
+            pull: 'clone', // ソースからはコピーする
+            put: false     // ソースには戻せない
+        },
+        animation: 150,
+        sort: false
+    });
 
-// ボタンの状態を変更する関数
-function setButtonLoading(btnId, isLoading) {
-  const btn = document.getElementById(btnId);
-  if (isLoading) {
-    btn.disabled = true;
-    btn.innerHTML = `<svg class="icon" style="animation: spin 1s linear infinite;" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" stroke-opacity="0.3"></circle><path fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> 処理中...`;
-  } else {
-    btn.disabled = false;
-    // 元のテキストに戻す（簡易実装のため固定テキスト）
-    if(btnId === 'extractBtn') {
-      btn.innerHTML = `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> 抽出してダウンロード`;
-    } else {
-      btn.innerHTML = `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg> 結合してダウンロード`;
-    }
-  }
-}
+    new Sortable(exportList, {
+        group: 'shared',
+        animation: 150,
+        onAdd: function (evt) {
+            // ドロップされた要素に削除ボタンの機能を有効化
+            const item = evt.item;
+            if (!item.querySelector('.btn-delete')) {
+                const delBtn = document.createElement('button');
+                delBtn.innerHTML = '×';
+                delBtn.className = 'btn-delete';
+                delBtn.onclick = () => item.remove();
+                item.appendChild(delBtn);
+            }
+            checkEmpty();
+        },
+        onEnd: function() { checkEmpty(); }
+    });
 
-// スピナー用CSS追加
-const style = document.createElement('style');
-style.innerHTML = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
-document.head.appendChild(style);
+    // ファイル選択時の処理
+    document.getElementById('pdfInput').addEventListener('change', async (e) => {
+        const files = e.target.files;
+        if (!files.length) return;
 
+        loader.style.display = 'flex';
+        
+        for (const file of files) {
+            const fileId = 'file_' + (fileCounter++);
+            const arrayBuffer = await file.arrayBuffer();
+            pdfDataMap.set(fileId, arrayBuffer);
 
-// ① 抽出ボタン処理
-document.getElementById("extractBtn").addEventListener("click", async () => {
-  if (!PDFDocument) return;
-  const pageNum = parseInt(document.getElementById("extractPage").value, 10);
-  
-  if (!extractFileData) {
-    alert("PDFファイルを選択してください");
-    return;
-  }
-  if (!pageNum) {
-    alert("ページ番号を入力してください");
-    return;
-  }
+            // PDF.jsでレンダリング
+            const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+            
+            // 最初の読み込み時にメッセージを消す
+            if (sourceList.querySelector('.empty-msg')) sourceList.innerHTML = '';
 
-  setButtonLoading("extractBtn", true);
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const viewport = page.getViewport({scale: 0.3}); // サムネイルサイズ
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
 
-  try {
-    // 少し待機させてUIの更新を反映させる
-    await new Promise(r => setTimeout(r, 100));
+                await page.render({canvasContext: context, viewport: viewport}).promise;
+                
+                // サムネイルカード作成
+                const card = document.createElement('div');
+                card.className = 'page-card';
+                card.dataset.fileId = fileId;
+                card.dataset.pageNum = i; // 1-based index
 
-    const pdf = await PDFDocument.load(extractFileData);
-    if (pageNum < 1 || pageNum > pdf.getPageCount()) {
-      alert(`ページ番号が範囲外です (全 ${pdf.getPageCount()} ページ)`);
-      setButtonLoading("extractBtn", false);
-      return;
-    }
+                const img = document.createElement('img');
+                img.src = canvas.toDataURL();
+                
+                const info = document.createElement('div');
+                info.className = 'page-info';
+                info.innerText = `${file.name.substring(0,10)}... P.${i}`;
 
-    const newPdf = await PDFDocument.create();
-    const [copiedPage] = await newPdf.copyPages(pdf, [pageNum - 1]);
-    newPdf.addPage(copiedPage);
+                card.appendChild(img);
+                card.appendChild(info);
+                sourceList.appendChild(card);
+            }
+        }
+        
+        loader.style.display = 'none';
+        e.target.value = ''; // リセット
+    });
 
-    await downloadPdf(newPdf, "extracted_page.pdf");
-  } catch (e) {
-    alert("エラー: " + e.message);
-    console.error(e);
-  } finally {
-    setButtonLoading("extractBtn", false);
-  }
-});
-
-// ② 挿入ボタン処理
-document.getElementById("insertBtn").addEventListener("click", async () => {
-  if (!PDFDocument) return;
-  const insertPos = parseInt(document.getElementById("insertPos").value, 10);
-  const insertPage = parseInt(document.getElementById("insertPage").value, 10);
-
-  if (!baseFileData) {
-    alert("「メインとなるPDF」を選択してください");
-    return;
-  }
-  if (!insertFileData) {
-    alert("「挿入するPDF」を選択してください");
-    return;
-  }
-  if (!insertPos || !insertPage) {
-    alert("ページ番号をすべて入力してください");
-    return;
-  }
-
-  setButtonLoading("insertBtn", true);
-
-  try {
-    await new Promise(r => setTimeout(r, 100));
-
-    const basePdf = await PDFDocument.load(baseFileData);
-    const insertPdf = await PDFDocument.load(insertFileData);
-    const newPdf = await PDFDocument.create();
-
-    if (insertPos < 1 || insertPos > basePdf.getPageCount()) {
-      alert(`挿入位置が範囲外です。メインPDFは全 ${basePdf.getPageCount()} ページです。`);
-      setButtonLoading("insertBtn", false);
-      return;
-    }
-    if (insertPage < 1 || insertPage > insertPdf.getPageCount()) {
-      alert(`挿入するページ番号が範囲外です。素材PDFは全 ${insertPdf.getPageCount()} ページです。`);
-      setButtonLoading("insertBtn", false);
-      return;
+    // 空状態のメッセージ管理
+    function checkEmpty() {
+        if (exportList.querySelectorAll('.page-card').length > 0) {
+            const msg = exportList.querySelector('.empty-msg');
+            if (msg) msg.remove();
+        }
     }
 
-    const basePages = await newPdf.copyPages(basePdf, basePdf.getPageIndices());
-    const [copiedPage] = await newPdf.copyPages(insertPdf, [insertPage - 1]);
+    // PDF生成とダウンロード
+    document.getElementById('downloadBtn').addEventListener('click', async () => {
+        const items = exportList.querySelectorAll('.page-card');
+        if (items.length === 0) {
+            alert('書き出しリストにページを追加してください');
+            return;
+        }
 
-    for (let i = 0; i < basePages.length; i++) {
-      newPdf.addPage(basePages[i]);
-      if (i === insertPos - 1) {
-        newPdf.addPage(copiedPage);
-      }
-    }
+        loader.style.display = 'flex';
+        try {
+            const { PDFDocument } = PDFLib;
+            const outPdf = await PDFDocument.create();
 
-    await downloadPdf(newPdf, "merged.pdf");
-  } catch (e) {
-    alert("エラー: " + e.message);
-    console.error(e);
-  } finally {
-    setButtonLoading("insertBtn", false);
-  }
-});
+            for (const item of items) {
+                const fileId = item.dataset.fileId;
+                const pageNum = parseInt(item.dataset.pageNum);
+                
+                const srcBytes = pdfDataMap.get(fileId);
+                const srcPdf = await PDFDocument.load(srcBytes);
+                
+                const [copiedPage] = await outPdf.copyPages(srcPdf, [pageNum - 1]);
+                outPdf.addPage(copiedPage);
+            }
 
-// ダウンロード用ヘルパー関数
-async function downloadPdf(pdfDoc, fileName) {
-  const pdfBytes = await pdfDoc.save();
-  const blob = new Blob([pdfBytes], { type: "application/pdf" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
+            const pdfBytes = await outPdf.save();
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'edited_document.pdf';
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error(err);
+            alert('PDFの生成中にエラーが発生しました');
+        }
+        loader.style.display = 'none';
+    });
 </script>
+
 </body>
 </html>
