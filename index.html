@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>PDF編集ツール | プロフェッショナル版</title>
+    <title>PDF編集ツール | 高画質・爆速ガイド版</title>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
@@ -27,40 +27,46 @@
 
         #merge-view { flex: 1; display: flex; gap: 2px; background: #cbd5e1; width: 100%; }
         .column { flex: 1; background: var(--bg); display: flex; flex-direction: column; overflow: hidden; }
-        .column-header { padding: 12px; background: white; border-bottom: 1px solid var(--border); }
+        .column-header { padding: 12px; background: white; border-bottom: 1px solid var(--border); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .scroll-area { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; align-items: center; }
 
-        .page-card { 
-            background: white; border: 2px solid transparent; box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
-            width: 95%; max-width: 600px; position: relative; margin-bottom: 20px; cursor: pointer; 
-            transition: transform 0.2s, border-color 0.2s; border-radius: 4px; overflow: hidden;
-            display: flex; flex-direction: column;
+        /* ガイドボックスの復活 */
+        .guide-box { 
+            padding: 10px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; margin-bottom: 10px;
+            background: #e2e8f0; color: #475569; border: 1px solid #cbd5e1; text-align: center; line-height: 1.4;
         }
-        /* 描画前のプレースホルダー背景 */
-        .page-card:not(.loaded) { background: #e2e8f0; }
+        .guide-box.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .guide-box.ready { background: var(--accent); color: white; border-color: var(--accent); animation: pulse-light 2s infinite; }
+        @keyframes pulse-light { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
 
+        .page-card { 
+            background: #fff; border: 2px solid transparent; box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+            width: 95%; max-width: 550px; position: relative; margin-bottom: 20px; cursor: pointer; 
+            transition: 0.2s; border-radius: 4px; overflow: hidden; display: flex; flex-direction: column;
+        }
+        .page-card:not(.loaded) { background: #cbd5e1; }
         .page-card img { 
             width: 100%; height: auto; display: block; opacity: 0; transition: opacity 0.4s;
             image-rendering: -webkit-optimize-contrast;
         }
         .page-card.loaded img { opacity: 1; }
-        .page-card.selected { border-color: var(--primary) !important; transform: scale(1.01); box-shadow: 0 0 20px rgba(79, 70, 229, 0.3); }
+        .page-card.selected { border-color: var(--primary) !important; transform: scale(1.02); z-index: 5; box-shadow: 0 0 20px rgba(79, 70, 229, 0.4); }
 
-        .page-footer { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; font-size: 13px; font-weight: bold; color: #64748b; }
+        .page-footer { padding: 6px 12px; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; font-size: 12px; font-weight: bold; color: #64748b; }
 
         .insert-divider { width: 100%; display: flex; justify-content: center; padding: 10px 0; }
         .btn-insert-here {
             background: #e2e8f0; border: 2px dashed #94a3b8; color: #64748b;
             padding: 10px 40px; border-radius: 30px; font-weight: bold; cursor: pointer;
-            transition: 0.3s; opacity: 0.5; pointer-events: none;
+            transition: 0.3s; opacity: 0.4; pointer-events: none;
         }
-        .btn-insert-here.active { opacity: 1; pointer-events: auto; background: var(--accent); color: white; border: 2px solid white; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3); }
+        .btn-insert-here.active { opacity: 1; pointer-events: auto; background: var(--accent); color: white; border: 2px solid white; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4); }
 
         .btn { padding: 8px 18px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-del { position: absolute; top: 8px; right: 8px; background: rgba(239, 68, 68, 0.9); color: white; border-radius: 50%; width: 30px; height: 30px; border: 2px solid white; cursor: pointer; z-index: 10; font-size: 18px; line-height: 1; }
-        .file-label { display: block; padding: 12px; border: 2px dashed var(--primary); border-radius: 8px; text-align: center; cursor: pointer; color: var(--primary); font-weight: bold; background: #eff6ff; }
+        .btn-del { position: absolute; top: 6px; right: 6px; background: rgba(239, 68, 68, 0.9); color: white; border-radius: 50%; width: 28px; height: 28px; border: 2px solid white; cursor: pointer; z-index: 10; font-size: 16px; }
+        .file-label { display: block; padding: 10px; border: 2px dashed var(--primary); border-radius: 8px; text-align: center; cursor: pointer; color: var(--primary); font-weight: bold; background: #eff6ff; }
         
-        #status { position: fixed; inset: 0; background: rgba(0,0,0,0.8); color: white; display: none; z-index: 10000; flex-direction: column; justify-content: center; align-items: center; font-size: 1.2rem; }
+        #status { position: fixed; inset: 0; background: rgba(0,0,0,0.8); color: white; display: none; z-index: 10000; flex-direction: column; justify-content: center; align-items: center; }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -68,7 +74,7 @@
 
 <div id="mode-selection">
     <h1 style="margin-bottom:10px;">PDF 編集ツール</h1>
-    <p style="opacity: 0.8; margin-bottom: 20px;">高画質・完全表示システム</p>
+    <p style="opacity: 0.8; margin-bottom: 20px;">高画質・仮想レンダリング版</p>
     <div class="mode-cards">
         <div class="mode-card" onclick="switchMode('extract')"><h2>1枚抽出</h2><p>特定のページを保存</p></div>
         <div class="mode-card" onclick="switchMode('merge')"><h2>ページ挿入・結合</h2><p>自由自在な差し込み</p></div>
@@ -77,30 +83,39 @@
 
 <header>
     <button class="btn" style="background:#475569; color:white;" onclick="location.reload()">← 戻る</button>
-    <span id="current-mode-title" style="font-weight: bold; letter-spacing: 1px;"></span>
+    <span id="current-mode-title" style="font-weight: bold;"></span>
     <div id="merge-actions" class="hidden">
-        <button id="saveMergedBtn" class="btn" style="background:var(--accent); color:white; padding: 10px 25px;">完成したPDFを保存</button>
+        <button id="saveMergedBtn" class="btn" style="background:var(--accent); color:white;">完成したPDFを保存</button>
     </div>
 </header>
 
 <main>
     <div id="extraction-view" class="column hidden">
-        <div class="column-header"><label class="file-label">PDFファイルを選択<input type="file" id="extractInput" accept=".pdf" class="hidden"></label></div>
+        <div class="column-header">
+            <div class="guide-box active">保存したいページの「この1枚を保存」ボタンを押してください</div>
+            <label class="file-label">PDFファイルを選択<input type="file" id="extractInput" accept=".pdf" class="hidden"></label>
+        </div>
         <div id="extract-list" class="scroll-area"></div>
     </div>
     <div id="merge-view" class="hidden">
         <div class="column">
-            <div class="column-header"><label class="file-label">素材となるPDFを選択<input type="file" id="sourceInput" accept=".pdf" class="hidden"></label></div>
+            <div class="column-header">
+                <div id="guide-step1" class="guide-box active">① 挿入したいページをクリックして選択</div>
+                <label class="file-label">素材となるPDFを選択<input type="file" id="sourceInput" accept=".pdf" class="hidden"></label>
+            </div>
             <div id="source-list" class="scroll-area"></div>
         </div>
         <div class="column">
-            <div class="column-header"><label class="file-label">ベースになるPDFを選択<input type="file" id="targetInput" accept=".pdf" class="hidden"></label></div>
+            <div class="column-header">
+                <div id="guide-step2" class="guide-box">② 挿入したい場所の「＋ ここに挿入」を押す</div>
+                <label class="file-label">ベースになるPDFを選択<input type="file" id="targetInput" accept=".pdf" class="hidden"></label>
+            </div>
             <div id="target-list" class="scroll-area"></div>
         </div>
     </div>
 </main>
 
-<div id="status"><div id="status-text">PDF処理中...</div></div>
+<div id="status">PDF処理中...</div>
 
 <script>
     const { PDFDocument } = PDFLib;
@@ -110,7 +125,7 @@
     const rawBuffers = new Map();
     let selectedPageData = null;
 
-    // 遅延読み込みの設定：画面外1000pxの距離から描画を開始（これで見切れを防止）
+    // 遅延描画：画面に入る少し前に描画を開始
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -118,7 +133,7 @@
                 observer.unobserve(entry.target);
             }
         });
-    }, { rootMargin: '1000px' });
+    }, { rootMargin: '800px' });
 
     function switchMode(mode) {
         document.getElementById('mode-selection').classList.add('hidden');
@@ -146,15 +161,14 @@
         container.innerHTML = '';
         if (mode === 'target') container.appendChild(createDivider());
 
-        // 全ページの形状（アスペクト比）を先に取得して枠を作る
         for (let i = 1; i <= pdf.numPages; i++) {
             const page = await pdf.getPage(i);
-            const viewport = page.getViewport({scale: 1});
-            const ratio = viewport.height / viewport.width;
+            const vp = page.getViewport({scale: 1});
+            const ratio = vp.height / vp.width;
 
             const card = createCard(fid, i, ratio, mode);
             container.appendChild(card);
-            observer.observe(card); // スクロール監視開始
+            observer.observe(card); 
             if (mode === 'target') container.appendChild(createDivider());
         }
     }
@@ -164,14 +178,14 @@
         card.className = 'page-card';
         card.dataset.fid = fid;
         card.dataset.pnum = pnum;
-        // アスペクト比を固定（これが重要！）
+        // アスペクト比を適用（画像ロード前から高さを確保）
         card.style.aspectRatio = `1 / ${ratio}`;
         
-        card.innerHTML = `<img src=""><div class="page-footer">PAGE ${pnum}</div>`;
+        card.innerHTML = `<img src=""><div class="page-footer"><span>P.${pnum}</span></div>`;
         
         if (mode === 'extract') {
             const btn = document.createElement('button');
-            btn.className = 'btn'; btn.style.background = 'var(--warning)'; btn.style.color = 'white'; btn.innerText = '保存';
+            btn.className = 'btn'; btn.style.background = 'var(--warning)'; btn.style.color = 'white'; btn.innerText = 'この1枚を保存';
             btn.onclick = (e) => { e.stopPropagation(); saveFile(fid, [pnum], `page_${pnum}.pdf`); };
             card.querySelector('.page-footer').appendChild(btn);
         } else if (mode === 'source') {
@@ -179,6 +193,9 @@
                 document.querySelectorAll('#source-list .page-card').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
                 selectedPageData = { fid, pnum, img: card.querySelector('img').src, ratio };
+                
+                // ガイドの更新
+                document.getElementById('guide-step2').classList.add('ready');
                 document.querySelectorAll('.btn-insert-here').forEach(b => b.classList.add('active'));
             };
         } else {
@@ -196,21 +213,16 @@
         const pdf = pdfjsDocs.get(fid);
         const page = await pdf.getPage(parseInt(pnum));
         
-        // ★画質：最高設定の2.0倍
         const viewport = page.getViewport({ scale: 2.0 });
         const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
         canvas.width = viewport.width;
         canvas.height = viewport.height;
         
-        await page.render({ canvasContext: ctx, viewport }).promise;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
         
         const img = card.querySelector('img');
         img.src = canvas.toDataURL('image/jpeg', 0.9);
         img.onload = () => card.classList.add('loaded');
-        
-        // メモリ節約のためcanvasを破棄
-        canvas.width = 0; canvas.height = 0;
     }
 
     function createDivider() {
@@ -233,17 +245,19 @@
 
     async function saveFile(fid, pages, name) {
         toggleStatus(true);
-        const out = await PDFDocument.create();
-        const src = await PDFDocument.load(rawBuffers.get(fid).slice(0), {ignoreEncryption:true});
-        const copied = await out.copyPages(src, pages.map(p => p - 1));
-        copied.forEach(p => out.addPage(p));
-        download(await out.save(), name);
+        try {
+            const out = await PDFDocument.create();
+            const src = await PDFDocument.load(rawBuffers.get(fid).slice(0), {ignoreEncryption:true});
+            const copied = await out.copyPages(src, pages.map(p => p - 1));
+            copied.forEach(p => out.addPage(p));
+            download(await out.save(), name);
+        } catch(e) { alert(e.message); }
         toggleStatus(false);
     }
 
     async function saveMerged() {
         const cards = document.querySelectorAll('#target-list .page-card');
-        if (!cards.length) return;
+        if (!cards.length) return alert('結合するページがありません');
         toggleStatus(true);
         try {
             const out = await PDFDocument.create();
