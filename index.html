@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Expert Editor | 修正版</title>
+    <title>PDF Expert Editor | 超高画質版</title>
     
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -19,16 +19,9 @@
             --dark: #0f172a;
         }
         
-        /* 全体レイアウトの固定 */
         html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
-        body { 
-            font-family: 'Noto Sans JP', sans-serif; 
-            background: var(--bg); 
-            display: flex; 
-            flex-direction: column; 
-        }
+        body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); display: flex; flex-direction: column; }
 
-        /* モード選択画面 */
         #mode-selection {
             position: fixed; inset: 0; background: var(--dark); z-index: 9999;
             display: flex; flex-direction: column; justify-content: center; align-items: center; color: white;
@@ -40,19 +33,14 @@
         }
         .mode-card:hover { background: var(--primary); transform: translateY(-5px); }
 
-        /* ヘッダー */
         header { 
             background: #fff; border-bottom: 1px solid var(--border); padding: 0 20px; 
             display: flex; justify-content: space-between; align-items: center; height: 60px; flex-shrink: 0;
         }
 
-        /* メインコンテンツエリア */
         main { flex: 1; display: flex; overflow: hidden; position: relative; }
 
-        /* 各ビューの基本設定 */
-        .view-container { 
-            display: flex; width: 100%; height: 100%; position: absolute; inset: 0; 
-        }
+        .view-container { display: flex; width: 100%; height: 100%; position: absolute; inset: 0; }
         .column { 
             flex: 1; display: flex; flex-direction: column; border-right: 1px solid var(--border);
             background: var(--bg); min-width: 0; height: 100%;
@@ -66,10 +54,9 @@
 
         .scroll-area { 
             flex: 1; overflow-y: auto; padding: 20px; 
-            display: flex; flex-direction: column; align-items: center; gap: 10px;
+            display: flex; flex-direction: column; align-items: center; gap: 15px;
         }
 
-        /* ガイド・ラベル */
         .guide-box { 
             padding: 8px; border-radius: 6px; font-size: 0.8rem; font-weight: bold;
             background: #f1f5f9; color: #64748b; border: 1px solid var(--border); text-align: center;
@@ -83,43 +70,40 @@
             color: var(--primary); font-weight: bold; background: #f5f7ff;
         }
 
-        /* PDFカード（アスペクト比修正） */
         .page-card { 
             background: #fff; border: 2px solid transparent; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1); width: 90%; max-width: 450px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 95%; max-width: 550px;
             position: relative; border-radius: 8px; overflow: hidden; flex-shrink: 0;
-            aspect-ratio: 1 / 1.414; /* A4比率で仮置き */
+            aspect-ratio: 1 / 1.414;
         }
         .page-card.loaded { aspect-ratio: auto; }
-        .page-card.selected { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.2); }
+        .page-card.selected { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.3); }
         .page-card img { width: 100%; height: auto; display: block; }
 
         .page-footer { 
-            padding: 8px 12px; background: #fff; border-top: 1px solid var(--border);
-            display: flex; justify-content: space-between; align-items: center; font-size: 12px;
+            padding: 10px 15px; background: #fff; border-top: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: bold;
         }
 
-        /* ボタン類 */
-        .btn { padding: 6px 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; }
+        .btn { padding: 8px 16px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-primary { background: var(--primary); color: white; }
         .btn-accent { background: var(--accent); color: white; }
         .btn-del { 
-            position: absolute; top: 5px; right: 5px; background: var(--danger); 
-            color: white; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white;
-            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            position: absolute; top: 8px; right: 8px; background: var(--danger); 
+            color: white; width: 28px; height: 28px; border-radius: 50%; border: 2px solid white;
+            display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10;
         }
 
-        /* 挿入用区切り */
-        .insert-divider { width: 100%; display: flex; justify-content: center; padding: 10px 0; }
+        .insert-divider { width: 100%; display: flex; justify-content: center; padding: 15px 0; }
         .btn-insert-here {
-            background: #e2e8f0; border: 2px dashed #94a3b8; color: #64748b;
-            padding: 8px 20px; border-radius: 20px; font-size: 12px; font-weight: bold;
-            cursor: pointer; opacity: 0.4; pointer-events: none;
+            background: #fff; border: 2px dashed var(--border); color: #94a3b8;
+            padding: 10px 30px; border-radius: 30px; font-size: 13px; font-weight: bold;
+            cursor: pointer; opacity: 0.5; pointer-events: none; transition: 0.3s;
         }
-        .btn-insert-here.active { opacity: 1; pointer-events: auto; background: var(--accent); color: white; border-style: solid; }
+        .btn-insert-here.active { opacity: 1; pointer-events: auto; background: var(--accent); color: white; border-style: solid; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3); }
 
         #status { 
-            position: fixed; inset: 0; background: rgba(0,0,0,0.8); color: white; 
+            position: fixed; inset: 0; background: rgba(15, 23, 42, 0.9); color: white; 
             display: none; z-index: 10000; flex-direction: column; justify-content: center; align-items: center; 
         }
         .hidden { display: none !important; }
@@ -128,7 +112,8 @@
 <body>
 
 <div id="mode-selection">
-    <h1>PDF Expert Editor</h1>
+    <h1 style="margin-bottom: 10px;">PDF Expert Editor</h1>
+    <p style="opacity: 0.6; margin-bottom: 30px;">高解像度レンダリング対応版</p>
     <div class="mode-cards">
         <div class="mode-card" onclick="switchMode('extract')"><h2>1枚抽出</h2><p>ページを選んで保存</p></div>
         <div class="mode-card" onclick="switchMode('merge')"><h2>ページ挿入・結合</h2><p>自由に組み替え</p></div>
@@ -137,25 +122,23 @@
 
 <header>
     <button class="btn" style="background:#64748b; color:white;" onclick="location.reload()">← 戻る</button>
-    <span id="current-mode-title" style="font-weight: bold;"></span>
+    <span id="current-mode-title" style="font-weight: bold; font-size: 1.1rem;"></span>
     <div id="merge-actions" class="hidden">
-        <button id="saveMergedBtn" class="btn btn-accent">完成したPDFを保存</button>
+        <button id="saveMergedBtn" class="btn btn-accent" style="padding: 10px 25px;">完成したPDFを保存</button>
     </div>
 </header>
 
 <main>
-    <!-- 抽出モード用 -->
     <div id="extraction-view" class="view-container hidden">
         <div class="column">
             <div class="column-header">
-                <div class="guide-box active">保存したいページの「保存」ボタンを押してください</div>
+                <div class="guide-box active">保存したいページの「このページを保存」を押してください</div>
                 <label class="file-label">PDFファイルを選択<input type="file" id="extractInput" accept=".pdf" class="hidden"></label>
             </div>
             <div id="extract-list" class="scroll-area"></div>
         </div>
     </div>
 
-    <!-- 結合モード用 -->
     <div id="merge-view" class="view-container hidden">
         <div class="column">
             <div class="column-header">
@@ -174,7 +157,10 @@
     </div>
 </main>
 
-<div id="status"><div>処理中...</div></div>
+<div id="status">
+    <div style="font-size:1.5rem; font-weight:bold; margin-bottom:10px;">高画質レンダリング中...</div>
+    <div style="opacity:0.8;">ページ数が多い場合、少し時間がかかります</div>
+</div>
 
 <script>
     const { PDFDocument } = PDFLib;
@@ -216,12 +202,12 @@
                 const card = document.createElement('div');
                 card.className = 'page-card';
                 card.dataset.fid = fid; card.dataset.pnum = i;
-                card.innerHTML = `<img alt="Loading..."><div class="page-footer"><span>P.${i}</span></div>`;
+                card.innerHTML = `<img alt="Rendering..."><div class="page-footer"><span>P.${i}</span></div>`;
                 
                 if (mode === 'extract') {
                     const b = document.createElement('button');
-                    b.className = 'btn btn-primary'; b.innerText = '保存';
-                    b.onclick = (e) => { e.stopPropagation(); saveFile(fid, [i], `p${i}.pdf`); };
+                    b.className = 'btn btn-primary'; b.innerText = 'このページを保存';
+                    b.onclick = (e) => { e.stopPropagation(); saveFile(fid, [i], `page_${i}.pdf`); };
                     card.querySelector('.page-footer').appendChild(b);
                 } else if (mode === 'source') {
                     card.onclick = () => {
@@ -241,7 +227,7 @@
                 renderPage(card);
                 if (mode === 'target') container.appendChild(createDivider());
             }
-        } catch (err) { alert(err.message); }
+        } catch (err) { alert("エラーが発生しました: " + err.message); }
         toggleStatus(false);
     }
 
@@ -249,13 +235,23 @@
         const { fid, pnum } = card.dataset;
         const pdf = pdfjsDocs.get(fid);
         const page = await pdf.getPage(parseInt(pnum));
-        const viewport = page.getViewport({ scale: 1.0 });
+        
+        // --- 高画質化設定: scale 2.0 ---
+        const viewport = page.getViewport({ scale: 2.0 });
         const canvas = document.createElement('canvas');
-        canvas.width = viewport.width; canvas.height = viewport.height;
-        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        const context = canvas.getContext('2d');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        
+        await page.render({ canvasContext: context, viewport }).promise;
+        
         const img = card.querySelector('img');
-        img.src = canvas.toDataURL();
-        img.onload = () => card.classList.add('loaded');
+        // JPEG品質 0.95 で出力
+        img.src = canvas.toDataURL('image/jpeg', 0.95);
+        img.onload = () => {
+            card.classList.add('loaded');
+            canvas.width = 0; canvas.height = 0; // メモリ解放
+        };
     }
 
     function createDivider() {
@@ -277,11 +273,13 @@
 
     async function saveFile(fid, pages, name) {
         toggleStatus(true);
-        const out = await PDFDocument.create();
-        const src = await PDFDocument.load(rawBuffers.get(fid).slice(0));
-        const copied = await out.copyPages(src, pages.map(p => p - 1));
-        copied.forEach(p => out.addPage(p));
-        download(await out.save(), name);
+        try {
+            const out = await PDFDocument.create();
+            const src = await PDFDocument.load(rawBuffers.get(fid).slice(0));
+            const copied = await out.copyPages(src, pages.map(p => p - 1));
+            copied.forEach(p => out.addPage(p));
+            download(await out.save(), name);
+        } catch(e) { alert(e.message); }
         toggleStatus(false);
     }
 
@@ -289,15 +287,17 @@
         const cards = document.querySelectorAll('#target-list .page-card');
         if (!cards.length) return;
         toggleStatus(true);
-        const out = await PDFDocument.create();
-        const cache = new Map();
-        for (const c of cards) {
-            const fid = c.dataset.fid;
-            if (!cache.has(fid)) cache.set(fid, await PDFDocument.load(rawBuffers.get(fid).slice(0)));
-            const [p] = await out.copyPages(cache.get(fid), [parseInt(c.dataset.pnum) - 1]);
-            out.addPage(p);
-        }
-        download(await out.save(), 'merged.pdf');
+        try {
+            const out = await PDFDocument.create();
+            const cache = new Map();
+            for (const c of cards) {
+                const fid = c.dataset.fid;
+                if (!cache.has(fid)) cache.set(fid, await PDFDocument.load(rawBuffers.get(fid).slice(0)));
+                const [p] = await out.copyPages(cache.get(fid), [parseInt(c.dataset.pnum) - 1]);
+                out.addPage(p);
+            }
+            download(await out.save(), 'merged_document.pdf');
+        } catch (e) { alert(e.message); }
         toggleStatus(false);
     }
 
