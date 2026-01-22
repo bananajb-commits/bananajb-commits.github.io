@@ -71,13 +71,27 @@
             background: #fff; border: 3px solid transparent; box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
             width: 90%; max-width: 550px; position: relative; margin-bottom: 20px; cursor: pointer; 
             transition: 0.2s; border-radius: 4px; overflow: hidden; display: block;
+            /* ★重要: 高さは中身（画像）に合わせる */
+            height: auto;
+            min-height: 100px;
         }
-        /* 読み込み前のプレースホルダー */
-        .page-card:not(.loaded) { height: 600px; background: #cbd5e1; display: flex; align-items: center; justify-content: center; }
+        
+        /* 読み込み前のプレースホルダー（読み込み中のみ高さを固定） */
+        .page-card:not(.loaded) { 
+            height: 600px; 
+            background: #cbd5e1; 
+            display: flex; align-items: center; justify-content: center; 
+        }
         .page-card:not(.loaded)::after { content: "Loading..."; color: #64748b; font-weight: bold; }
         
         .page-card img { 
-            width: 100%; height: auto; display: block; opacity: 0; transition: opacity 0.4s;
+            width: 100%; 
+            /* ★重要: 高さは自動調整を強制し、アスペクト比を維持 */
+            height: auto !important; 
+            display: block; 
+            opacity: 0; 
+            transition: opacity 0.4s;
+            /* 画像のレンダリング品質を向上 */
             image-rendering: -webkit-optimize-contrast;
         }
         .page-card.loaded img { opacity: 1; }
@@ -185,7 +199,7 @@
     const rawBuffers = new Map();
     let selectedPageData = null;
 
-    // 遅延描画（IntersectionObserver）の設定：画面に表示されたページのみレンダリング
+    // 遅延描画（IntersectionObserver）の設定
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -219,17 +233,14 @@
             const buffer = await file.arrayBuffer();
             rawBuffers.set(fid, buffer);
             
-            // PDF.jsでドキュメント読み込み（バッファのコピーを使用）
             const pdf = await pdfjsLib.getDocument({data: buffer.slice(0)}).promise;
             pdfjsDocs.set(fid, pdf);
 
             const container = document.getElementById(containerId);
             container.innerHTML = '';
             
-            // ターゲット（ベース）側の場合は、最初の挿入ポイントを作成
             if (mode === 'target') container.appendChild(createDivider());
 
-            // ページカードの生成
             const fragment = document.createDocumentFragment();
             for (let i = 1; i <= pdf.numPages; i++) {
                 const card = document.createElement('div');
@@ -240,26 +251,20 @@
                 
                 card.innerHTML = `<img src=""><div class="page-footer"><span>P.${i}</span></div>`;
                 
-                // モード別の挙動設定
                 if (mode === 'extract') {
-                    // 抽出モード：保存ボタン
                     const b = document.createElement('button');
                     b.className = 'btn'; b.style.background = 'var(--warning)'; b.style.color = 'white'; b.innerText = 'この1枚を保存';
                     b.onclick = (e) => { e.stopPropagation(); saveFile(fid, [i], `p${i}.pdf`); };
                     card.querySelector('.page-footer').appendChild(b);
                 } else if (mode === 'source') {
-                    // 素材モード：クリックで選択
                     card.onclick = () => {
                         document.querySelectorAll('#source-list .page-card').forEach(c => c.classList.remove('selected'));
                         card.classList.add('selected');
                         selectedPageData = { fid, pnum: i, img: card.querySelector('img').src };
-                        
-                        // ガイドとボタンの状態更新
                         document.getElementById('guide-step2').classList.add('ready');
                         document.querySelectorAll('.btn-insert-here').forEach(btn => btn.classList.add('active'));
                     };
                 } else {
-                    // ベースモード：削除ボタン
                     const del = document.createElement('button');
                     del.className = 'btn-del'; del.innerText = '×';
                     del.onclick = (e) => { e.stopPropagation(); card.nextSibling.remove(); card.remove(); };
@@ -267,9 +272,7 @@
                 }
 
                 fragment.appendChild(card);
-                observer.observe(card); // 描画監視対象に追加
-                
-                // ターゲット側の場合は、ページ間に挿入ポイントを追加
+                observer.observe(card);
                 if (mode === 'target') fragment.appendChild(createDivider());
             }
             container.appendChild(fragment);
@@ -281,7 +284,7 @@
         }
     }
 
-    // ページのレンダリング（高画質化）
+    // ページのレンダリング（アスペクト比修正版）
     async function renderPage(card) {
         if (card.classList.contains('loaded')) return;
         const { fid, pnum } = card.dataset;
@@ -297,47 +300,48 @@
         await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
         
         const img = card.querySelector('img');
-        img.src = canvas.toDataURL('image/jpeg', 0.9);
+        
+        // ★重要: 画像読み込み完了時に高さを解放する
         img.onload = () => {
-            card.style.height = 'auto'; // プレースホルダーの高さを解除
             card.classList.add('loaded');
+            // プレースホルダーの高さを解除し、画像本来の高さに合わせる
+            card.style.height = 'auto';
+            card.style.minHeight = '0';
         };
+        
+        img.src = canvas.toDataURL('image/jpeg', 0.9);
     }
 
-    // 挿入ポイント（＋ボタン）の作成
     function createDivider() {
         const d = document.createElement('div');
         d.className = 'insert-divider';
         const b = document.createElement('button');
         b.className = 'btn-insert-here'; b.innerText = '＋ ここに挿入';
         
-        // 既に素材が選択されている場合はアクティブにする
         if (selectedPageData) b.classList.add('active');
         
         b.onclick = () => {
             if (!selectedPageData) return;
             
-            // 新しいカードを作成して挿入
             const newCard = document.createElement('div');
             newCard.className = 'page-card loaded';
             newCard.dataset.fid = selectedPageData.fid;
             newCard.dataset.pnum = selectedPageData.pnum;
-            // 既にレンダリング済みの画像データを再利用
-            newCard.innerHTML = `<img src="${selectedPageData.img}" style="opacity:1"><div class="page-footer"><span>P.${selectedPageData.pnum} (挿入)</span></div>`;
+            // 挿入時も高さをautoに設定
+            newCard.style.height = 'auto';
+            newCard.innerHTML = `<img src="${selectedPageData.img}" style="opacity:1; height:auto !important;"><div class="page-footer"><span>P.${selectedPageData.pnum} (挿入)</span></div>`;
             
             const del = document.createElement('button');
             del.className = 'btn-del'; del.innerText = '×';
             del.onclick = (e) => { e.stopPropagation(); newCard.nextSibling.remove(); newCard.remove(); };
             newCard.appendChild(del);
 
-            // ボタンの後ろに [新カード] [新挿入ポイント] を追加
             d.after(newCard, createDivider());
         };
         d.appendChild(b);
         return d;
     }
 
-    // 1枚保存処理
     async function saveFile(fid, pages, name) {
         toggleStatus(true);
         try {
@@ -352,7 +356,6 @@
         toggleStatus(false);
     }
 
-    // 結合PDFの保存処理
     async function saveMerged() {
         const cards = document.querySelectorAll('#target-list .page-card');
         if (!cards.length) {
@@ -362,11 +365,10 @@
         toggleStatus(true);
         try {
             const out = await PDFDocument.create();
-            const cache = new Map(); // PDF読み込みのキャッシュ
+            const cache = new Map();
             
             for (const c of cards) {
                 const fid = c.dataset.fid;
-                // 同じPDFファイルは一度だけロードする
                 if (!cache.has(fid)) {
                     cache.set(fid, await PDFDocument.load(rawBuffers.get(fid).slice(0), {ignoreEncryption:true}));
                 }
@@ -381,17 +383,14 @@
         toggleStatus(false);
     }
 
-    // ダウンロードヘルパー
     function download(bytes, name) {
         const b = new Blob([bytes], {type:'application/pdf'});
         const a = document.createElement('a');
         a.href = URL.createObjectURL(b); a.download = name; a.click();
     }
 
-    // ステータス表示切り替え
     function toggleStatus(show) { document.getElementById('status').style.display = show ? 'flex' : 'none'; }
 
-    // イベントリスナー設定
     document.getElementById('extractInput').onchange = e => handleFile(e, 'extract-list', 'extract');
     document.getElementById('sourceInput').onchange = e => handleFile(e, 'source-list', 'source');
     document.getElementById('targetInput').onchange = e => handleFile(e, 'target-list', 'target');
