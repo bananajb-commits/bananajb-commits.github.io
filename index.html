@@ -94,7 +94,7 @@
         .page-card.loaded {
             height: auto; /* 画像の高さに自動追従 */
             background: transparent;
-            display: block;
+            display: block; /* flex解除でレイアウト崩れを防止 */
         }
         
         .page-card img { 
@@ -103,6 +103,9 @@
             display: block; 
             opacity: 0; 
             transition: opacity 0.3s;
+            /* --- 修正箇所: アスペクト比崩れ防止 --- */
+            object-fit: contain; 
+            flex-shrink: 0; /* Flexコンテナ内で潰されるのを防ぐ */
         }
         .page-card.loaded img { opacity: 1; }
         .page-card.selected { border-color: var(--primary) !important; transform: scale(1.02); z-index: 5; }
@@ -243,6 +246,7 @@
                 card.dataset.pnum = i;
                 card.dataset.mode = mode;
                 
+                // imgタグの初期化
                 card.innerHTML = `<img alt="Page ${i}"><div class="page-footer"><span>P.${i}</span></div>`;
                 
                 if (mode === 'extract') {
@@ -300,6 +304,11 @@
         
         const img = card.querySelector('img');
         
+        // --- 修正箇所: アスペクト比を正しく維持するための設定 ---
+        // 画像の本来のサイズを属性としてセット（CSS計算の基準になる）
+        img.width = canvas.width;
+        img.height = canvas.height;
+        
         // 画像読み込み完了時の処理
         img.onload = () => {
             card.classList.add('loaded'); // ここでCSSが切り替わり、高さ制限が解除される
@@ -324,7 +333,9 @@
             newCard.dataset.pnum = selectedPageData.pnum;
             
             // 挿入する画像
-            const imgHTML = `<img src="${selectedPageData.imgSrc}" style="opacity:1">`;
+            // ここでもアスペクト比を維持するためにwidth/height属性をセットするのが望ましいが、
+            // 既存のimgSrcを使うため、CSSのobject-fitで対応する
+            const imgHTML = `<img src="${selectedPageData.imgSrc}" style="opacity:1; width:100%; height:auto; object-fit:contain;">`;
             newCard.innerHTML = `${imgHTML}<div class="page-footer"><span>P.${selectedPageData.pnum} (挿入)</span></div>`;
             
             const del = document.createElement('button');
