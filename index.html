@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>PDF編集ツール | 高画質・爆速ガイド版</title>
+    <title>PDF編集ツール | 大容量・超高速版</title>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
@@ -27,10 +27,10 @@
 
         #merge-view { flex: 1; display: flex; gap: 2px; background: #cbd5e1; width: 100%; }
         .column { flex: 1; background: var(--bg); display: flex; flex-direction: column; overflow: hidden; }
-        .column-header { padding: 12px; background: white; border-bottom: 1px solid var(--border); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .column-header { padding: 12px; background: white; border-bottom: 1px solid var(--border); }
         .scroll-area { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; align-items: center; }
 
-        /* ガイドボックスの復活 */
+        /* ガイドボックス */
         .guide-box { 
             padding: 10px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; margin-bottom: 10px;
             background: #e2e8f0; color: #475569; border: 1px solid #cbd5e1; text-align: center; line-height: 1.4;
@@ -41,8 +41,10 @@
 
         .page-card { 
             background: #fff; border: 2px solid transparent; box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
-            width: 95%; max-width: 550px; position: relative; margin-bottom: 20px; cursor: pointer; 
+            width: 95%; max-width: 500px; position: relative; margin-bottom: 20px; cursor: pointer; 
             transition: 0.2s; border-radius: 4px; overflow: hidden; display: flex; flex-direction: column;
+            /* 棒線防止用のデフォルト設定（A4比率） */
+            aspect-ratio: 1 / 1.414; min-height: 150px; 
         }
         .page-card:not(.loaded) { background: #cbd5e1; }
         .page-card img { 
@@ -74,7 +76,7 @@
 
 <div id="mode-selection">
     <h1 style="margin-bottom:10px;">PDF 編集ツール</h1>
-    <p style="opacity: 0.8; margin-bottom: 20px;">高画質・仮想レンダリング版</p>
+    <p style="opacity: 0.8; margin-bottom: 20px;">大容量対応・高速レンダリング</p>
     <div class="mode-cards">
         <div class="mode-card" onclick="switchMode('extract')"><h2>1枚抽出</h2><p>特定のページを保存</p></div>
         <div class="mode-card" onclick="switchMode('merge')"><h2>ページ挿入・結合</h2><p>自由自在な差し込み</p></div>
@@ -107,7 +109,7 @@
         </div>
         <div class="column">
             <div class="column-header">
-                <div id="guide-step2" class="guide-box">② 挿入したい場所の「＋ ここに挿入」を押す</div>
+                <div id="guide-step2" class="guide-box" id="guide-merge-text">② 挿入したい場所の「＋ ここに挿入」を押す</div>
                 <label class="file-label">ベースになるPDFを選択<input type="file" id="targetInput" accept=".pdf" class="hidden"></label>
             </div>
             <div id="target-list" class="scroll-area"></div>
@@ -125,7 +127,6 @@
     const rawBuffers = new Map();
     let selectedPageData = null;
 
-    // 遅延描画：画面に入る少し前に描画を開始
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -133,7 +134,7 @@
                 observer.unobserve(entry.target);
             }
         });
-    }, { rootMargin: '800px' });
+    }, { rootMargin: '1000px' });
 
     function switchMode(mode) {
         document.getElementById('mode-selection').classList.add('hidden');
@@ -150,6 +151,8 @@
     async function processFile(e, containerId, mode) {
         const file = e.target.files[0];
         if (!file) return;
+        toggleStatus(true, "PDFを読み込み中...");
+        
         const fid = 'f' + Date.now();
         const buffer = await file.arrayBuffer();
         rawBuffers.set(fid, buffer);
@@ -157,20 +160,25 @@
         const pdf = await pdfjsLib.getDocument({data: buffer.slice(0)}).promise;
         pdfjsDocs.set(fid, pdf);
 
+        // ★高速化の鍵：最初の1ページ目だけを読み取って全体の比率を決める
+        const firstPage = await pdf.getPage(1);
+        const vp = firstPage.getViewport({scale: 1});
+        const docRatio = vp.height / vp.width;
+
         const container = document.getElementById(containerId);
         container.innerHTML = '';
         if (mode === 'target') container.appendChild(createDivider());
 
+        // 大量ページでも一瞬でDOM構築
+        const fragment = document.createDocumentFragment();
         for (let i = 1; i <= pdf.numPages; i++) {
-            const page = await pdf.getPage(i);
-            const vp = page.getViewport({scale: 1});
-            const ratio = vp.height / vp.width;
-
-            const card = createCard(fid, i, ratio, mode);
-            container.appendChild(card);
+            const card = createCard(fid, i, docRatio, mode);
+            fragment.appendChild(card);
             observer.observe(card); 
-            if (mode === 'target') container.appendChild(createDivider());
+            if (mode === 'target') fragment.appendChild(createDivider());
         }
+        container.appendChild(fragment);
+        toggleStatus(false);
     }
 
     function createCard(fid, pnum, ratio, mode) {
@@ -178,7 +186,6 @@
         card.className = 'page-card';
         card.dataset.fid = fid;
         card.dataset.pnum = pnum;
-        // アスペクト比を適用（画像ロード前から高さを確保）
         card.style.aspectRatio = `1 / ${ratio}`;
         
         card.innerHTML = `<img src=""><div class="page-footer"><span>P.${pnum}</span></div>`;
@@ -194,7 +201,7 @@
                 card.classList.add('selected');
                 selectedPageData = { fid, pnum, img: card.querySelector('img').src, ratio };
                 
-                // ガイドの更新
+                // ガイドの活性化
                 document.getElementById('guide-step2').classList.add('ready');
                 document.querySelectorAll('.btn-insert-here').forEach(b => b.classList.add('active'));
             };
@@ -213,6 +220,10 @@
         const pdf = pdfjsDocs.get(fid);
         const page = await pdf.getPage(parseInt(pnum));
         
+        // ★大量ページ時も安心：実際に描画する直前に比率を微調整
+        const vp = page.getViewport({ scale: 1 });
+        card.style.aspectRatio = `1 / ${vp.height / vp.width}`;
+
         const viewport = page.getViewport({ scale: 2.0 });
         const canvas = document.createElement('canvas');
         canvas.width = viewport.width;
@@ -221,8 +232,9 @@
         await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
         
         const img = card.querySelector('img');
-        img.src = canvas.toDataURL('image/jpeg', 0.9);
+        img.src = canvas.toDataURL('image/jpeg', 0.85);
         img.onload = () => card.classList.add('loaded');
+        canvas.width = 0; canvas.height = 0; // メモリ解放
     }
 
     function createDivider() {
@@ -244,7 +256,7 @@
     }
 
     async function saveFile(fid, pages, name) {
-        toggleStatus(true);
+        toggleStatus(true, "PDF生成中...");
         try {
             const out = await PDFDocument.create();
             const src = await PDFDocument.load(rawBuffers.get(fid).slice(0), {ignoreEncryption:true});
@@ -257,8 +269,8 @@
 
     async function saveMerged() {
         const cards = document.querySelectorAll('#target-list .page-card');
-        if (!cards.length) return alert('結合するページがありません');
-        toggleStatus(true);
+        if (!cards.length) return alert('ページがありません');
+        toggleStatus(true, "PDFを結合中...");
         try {
             const out = await PDFDocument.create();
             const cache = new Map();
@@ -279,7 +291,11 @@
         a.href = URL.createObjectURL(b); a.download = name; a.click();
     }
 
-    function toggleStatus(show) { document.getElementById('status').style.display = show ? 'flex' : 'none'; }
+    function toggleStatus(show, text = "PDF処理中...") { 
+        const s = document.getElementById('status');
+        s.innerText = text;
+        s.style.display = show ? 'flex' : 'none'; 
+    }
 
     document.getElementById('extractInput').onchange = e => processFile(e, 'extract-list', 'extract');
     document.getElementById('sourceInput').onchange = e => processFile(e, 'source-list', 'source');
