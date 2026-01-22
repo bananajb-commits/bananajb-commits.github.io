@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF編集ツール | 比率完全維持版</title>
+    <title>PDF編集ツール | 表示修正・完全版</title>
     
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -59,7 +59,7 @@
         .guide-box.active { background: var(--primary); color: white; border-color: var(--primary); }
         .guide-box.ready { background: var(--accent); color: white; border-color: var(--accent); animation: pulse-light 2s infinite; }
 
-        /* --- 修正の核心部分 --- */
+        /* --- 修正箇所: カードのスタイル --- */
         .page-card { 
             background: #fff; 
             border: 3px solid transparent; 
@@ -71,16 +71,14 @@
             cursor: pointer; 
             border-radius: 4px; 
             overflow: hidden; 
-            display: flex; 
+            /* 初期状態はflexでローディング表示を中央寄せ */
+            display: flex;
             flex-direction: column;
-            /* 高さは中身に任せる（絶対固定しない） */
-            height: auto !important;
-            min-height: 0 !important;
         }
 
-        /* 読み込み中の表示 */
+        /* 読み込み前：高さを400pxに固定して「場所」を確保する */
         .page-card:not(.loaded) {
-            min-height: 150px; /* 読み込み中だけ最低限の高さを確保 */
+            height: 400px; 
             background: #cbd5e1;
             justify-content: center;
             align-items: center;
@@ -91,11 +89,17 @@
             font-weight: bold; 
             font-size: 1.2rem;
         }
+
+        /* 読み込み完了後：高さ制限を解除し、画像に合わせる */
+        .page-card.loaded {
+            height: auto; /* 画像の高さに自動追従 */
+            background: transparent;
+            display: block;
+        }
         
-        /* 画像のスタイル：比率維持を最優先 */
         .page-card img { 
-            width: 100% !important; 
-            height: auto !important; 
+            width: 100%; 
+            height: auto; 
             display: block; 
             opacity: 0; 
             transition: opacity 0.3s;
@@ -112,7 +116,7 @@
             font-size: 13px; 
             font-weight: bold; 
             border-top: 1px solid #eee; 
-            flex-shrink: 0; /* フッターが潰れないように */
+            flex-shrink: 0; 
         }
 
         .insert-divider { width: 100%; display: flex; justify-content: center; padding: 10px 0; flex-shrink: 0; }
@@ -192,6 +196,7 @@
     const rawBuffers = new Map();
     let selectedPageData = null;
 
+    // 画面に入ったら描画する設定
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -199,7 +204,7 @@
                 observer.unobserve(entry.target);
             }
         });
-    }, { rootMargin: '1000px' }); // 早めに読み込む
+    }, { rootMargin: '600px' });
 
     function switchMode(mode) {
         document.getElementById('mode-selection').classList.add('hidden');
@@ -233,12 +238,11 @@
             const fragment = document.createDocumentFragment();
             for (let i = 1; i <= pdf.numPages; i++) {
                 const card = document.createElement('div');
-                card.className = 'page-card';
+                card.className = 'page-card'; // 初期状態は not(.loaded) なので高さ400px
                 card.dataset.fid = fid;
                 card.dataset.pnum = i;
                 card.dataset.mode = mode;
                 
-                // imgタグにはまだsrcを入れない
                 card.innerHTML = `<img alt="Page ${i}"><div class="page-footer"><span>P.${i}</span></div>`;
                 
                 if (mode === 'extract') {
@@ -250,7 +254,6 @@
                     card.onclick = () => {
                         document.querySelectorAll('#source-list .page-card').forEach(c => c.classList.remove('selected'));
                         card.classList.add('selected');
-                        // 選択時に画像データを取得（まだロードされてない場合はプレースホルダー）
                         const imgTag = card.querySelector('img');
                         selectedPageData = { 
                             fid, pnum: i, 
@@ -297,18 +300,12 @@
         
         const img = card.querySelector('img');
         
-        // ★重要: 画像の本来のサイズを属性として明示的にセットする
-        // これにより、CSSが読み込まれる前でもブラウザは正しい比率を知ることができる
-        img.width = viewport.width;
-        img.height = viewport.height;
+        // 画像読み込み完了時の処理
+        img.onload = () => {
+            card.classList.add('loaded'); // ここでCSSが切り替わり、高さ制限が解除される
+        };
         
         img.src = canvas.toDataURL('image/jpeg', 0.9);
-        
-        img.onload = () => {
-            card.classList.add('loaded');
-            // 読み込み完了後、カードのスタイル制限を完全に解除
-            card.style.minHeight = '0';
-        };
     }
 
     function createDivider() {
@@ -322,12 +319,12 @@
             if (!selectedPageData) return;
             
             const newCard = document.createElement('div');
-            newCard.className = 'page-card loaded';
+            newCard.className = 'page-card loaded'; // 挿入時は最初からloaded
             newCard.dataset.fid = selectedPageData.fid;
             newCard.dataset.pnum = selectedPageData.pnum;
             
-            // 挿入する画像にもサイズ情報を引き継ぐ
-            const imgHTML = `<img src="${selectedPageData.imgSrc}" width="${selectedPageData.width}" height="${selectedPageData.height}" style="opacity:1">`;
+            // 挿入する画像
+            const imgHTML = `<img src="${selectedPageData.imgSrc}" style="opacity:1">`;
             newCard.innerHTML = `${imgHTML}<div class="page-footer"><span>P.${selectedPageData.pnum} (挿入)</span></div>`;
             
             const del = document.createElement('button');
