@@ -48,10 +48,9 @@
         }
         .page-card.selected { border-color: var(--primary) !important; box-shadow: 0 0 20px rgba(79, 70, 229, 0.5); transform: scale(1.02); z-index: 5; }
         
-        /* 高画質化のための画像レンダリング設定 */
         .page-card img { 
             width: 100%; height: auto; display: block; 
-            image-rendering: -webkit-optimize-contrast; /* 文字をくっきりさせる */
+            image-rendering: -webkit-optimize-contrast;
         }
 
         .page-footer { padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; font-size: 12px; }
@@ -158,8 +157,10 @@
             try {
                 const buffer = await file.arrayBuffer();
                 const fileId = 'f' + (fileIdCounter++);
+                // バッファを保存
                 pdfDataMap.set(fileId, buffer);
                 
+                // PDF.jsにはバッファのコピーを渡す（安全のため）
                 const pdf = await pdfjsLib.getDocument({data: buffer.slice(0)}).promise;
                 const container = document.getElementById(containerId);
                 container.innerHTML = '';
@@ -169,7 +170,6 @@
                 for (let i = 1; i <= pdf.numPages; i++) {
                     const page = await pdf.getPage(i);
                     
-                    // ★画質向上のポイント: scaleを2.0に設定（標準の2倍の解像度）
                     const viewport = page.getViewport({scale: 2.0});
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
@@ -178,7 +178,6 @@
                     
                     await page.render({canvasContext: ctx, viewport: viewport}).promise;
                     
-                    // ★画質向上のポイント: JPEG品質を0.95に設定
                     const imgData = canvas.toDataURL('image/jpeg', 0.95);
                     const card = createCard(fileId, i, imgData, isExtractMode, isTargetCol);
                     container.appendChild(card);
@@ -187,7 +186,8 @@
                     if (i % 3 === 0) updateStatusText(`${i}/${pdf.numPages} ページ描画中...`);
                 }
             } catch (err) {
-                alert('PDFの読み込みに失敗しました。');
+                console.error(err);
+                alert('PDFの読み込みに失敗しました: ' + err.message);
             }
             hideStatus();
         });
@@ -202,7 +202,7 @@
         card.className = 'page-card';
         card.dataset.fid = fileId;
         card.dataset.pnum = pageNum;
-        card.dataset.img = imgData;
+        // 【修正】dataset.img に巨大なデータを入れない（メモリ対策）
         
         card.innerHTML = `<img src="${imgData}"><div class="page-footer"><span>P.${pageNum}</span></div>`;
         
@@ -215,7 +215,11 @@
             card.onclick = () => {
                 document.querySelectorAll('#source-list .page-card').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
-                selectedSourcePage = { fileId, pageNum, imgData };
+                
+                // 【修正】画像データはDOMのsrc属性から取得する
+                const currentImg = card.querySelector('img').src;
+                selectedSourcePage = { fileId, pageNum, imgData: currentImg };
+                
                 document.querySelectorAll('.btn-insert-here').forEach(b => b.classList.add('active'));
                 document.getElementById('guide-step2').classList.add('ready');
             };
@@ -247,12 +251,17 @@
     async function extractSinglePage(fileId, pageNum) {
         showStatus('PDF生成中...');
         try {
-            const srcPdf = await PDFDocument.load(pdfDataMap.get(fileId), { ignoreEncryption: true });
+            // 【修正】バッファのコピーを渡す
+            const srcBuffer = pdfDataMap.get(fileId).slice(0);
+            const srcPdf = await PDFDocument.load(srcBuffer, { ignoreEncryption: true });
             const outPdf = await PDFDocument.create();
             const [page] = await outPdf.copyPages(srcPdf, [pageNum - 1]);
             outPdf.addPage(page);
             download(await outPdf.save(), `page_${pageNum}.pdf`);
-        } catch (e) { alert('保存に失敗しました。'); }
+        } catch (e) { 
+            console.error(e);
+            alert('保存に失敗しました: ' + e.message); 
+        }
         hideStatus();
     }
 
@@ -260,20 +269,33 @@
         const targetCards = document.querySelectorAll('#target-list .page-card');
         if (!targetCards.length) return alert('ページがありません');
         showStatus('PDF結合中...');
+        
         try {
             const outPdf = await PDFDocument.create();
-            const pdfDocCache = new Map();
+            const pdfDocCache = new Map(); // 同じファイルの再ロードを防ぐキャッシュ
+
             for (const card of targetCards) {
                 const fId = card.dataset.fid;
                 const pNum = parseInt(card.dataset.pnum);
+
                 if (!pdfDocCache.has(fId)) {
-                    pdfDocCache.set(fId, await PDFDocument.load(pdfDataMap.get(fId), { ignoreEncryption: true }));
+                    const buffer = pdfDataMap.get(fId);
+                    if (!buffer) throw new Error(`元ファイルが見つかりません (ID: ${fId})`);
+                    
+                    // 【修正】バッファのコピーを渡してロードする（重要）
+                    const loadedDoc = await PDFDocument.load(buffer.slice(0), { ignoreEncryption: true });
+                    pdfDocCache.set(fId, loadedDoc);
                 }
-                const [copiedPage] = await outPdf.copyPages(pdfDocCache.get(fId), [pNum - 1]);
+
+                const srcDoc = pdfDocCache.get(fId);
+                const [copiedPage] = await outPdf.copyPages(srcDoc, [pNum - 1]);
                 outPdf.addPage(copiedPage);
             }
             download(await outPdf.save(), 'merged.pdf');
-        } catch (e) { alert('PDFの生成に失敗しました。'); }
+        } catch (e) { 
+            console.error(e);
+            alert('PDFの生成に失敗しました。\n詳細: ' + e.message); 
+        }
         hideStatus();
     }
 
