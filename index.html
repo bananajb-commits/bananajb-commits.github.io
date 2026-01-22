@@ -85,7 +85,7 @@
 
 <div id="mode-selection">
     <h1 style="margin-bottom:10px;">PDF 編集ツール</h1>
-    <p style="opacity: 0.8; margin-bottom: 20px;">高画質レンダリング版</p>
+    <p style="opacity: 0.8; margin-bottom: 20px;">高画質・安定版</p>
     <div class="mode-cards">
         <div class="mode-card" onclick="switchMode('extract')"><h2>1枚抽出</h2><p>特定のページだけを保存</p></div>
         <div class="mode-card" onclick="switchMode('merge')"><h2>ページ挿入・結合</h2><p>ページを選んで差し込み</p></div>
@@ -152,15 +152,14 @@
         document.getElementById(id).addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            showStatus('高画質で解析中...');
+            showStatus('PDFを解析中...');
             
             try {
                 const buffer = await file.arrayBuffer();
                 const fileId = 'f' + (fileIdCounter++);
-                // バッファを保存
+                // 元データを保存
                 pdfDataMap.set(fileId, buffer);
                 
-                // PDF.jsにはバッファのコピーを渡す（安全のため）
                 const pdf = await pdfjsLib.getDocument({data: buffer.slice(0)}).promise;
                 const container = document.getElementById(containerId);
                 container.innerHTML = '';
@@ -169,7 +168,6 @@
 
                 for (let i = 1; i <= pdf.numPages; i++) {
                     const page = await pdf.getPage(i);
-                    
                     const viewport = page.getViewport({scale: 2.0});
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
@@ -178,16 +176,16 @@
                     
                     await page.render({canvasContext: ctx, viewport: viewport}).promise;
                     
-                    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                    const imgData = canvas.toDataURL('image/jpeg', 0.9);
                     const card = createCard(fileId, i, imgData, isExtractMode, isTargetCol);
                     container.appendChild(card);
                     
                     if (isTargetCol) container.appendChild(createInsertDivider());
-                    if (i % 3 === 0) updateStatusText(`${i}/${pdf.numPages} ページ描画中...`);
+                    if (i % 5 === 0) updateStatusText(`${i}/${pdf.numPages} ページ描画中...`);
                 }
             } catch (err) {
                 console.error(err);
-                alert('PDFの読み込みに失敗しました: ' + err.message);
+                alert('読み込みに失敗しました: ' + err.message);
             }
             hideStatus();
         });
@@ -200,9 +198,9 @@
     function createCard(fileId, pageNum, imgData, isExt, isTar) {
         const card = document.createElement('div');
         card.className = 'page-card';
-        card.dataset.fid = fileId;
-        card.dataset.pnum = pageNum;
-        // 【修正】dataset.img に巨大なデータを入れない（メモリ対策）
+        // datasetを確実にセット
+        card.setAttribute('data-fid', fileId);
+        card.setAttribute('data-pnum', pageNum);
         
         card.innerHTML = `<img src="${imgData}"><div class="page-footer"><span>P.${pageNum}</span></div>`;
         
@@ -215,18 +213,19 @@
             card.onclick = () => {
                 document.querySelectorAll('#source-list .page-card').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
-                
-                // 【修正】画像データはDOMのsrc属性から取得する
-                const currentImg = card.querySelector('img').src;
-                selectedSourcePage = { fileId, pageNum, imgData: currentImg };
-                
+                selectedSourcePage = { fileId, pageNum, imgData };
                 document.querySelectorAll('.btn-insert-here').forEach(b => b.classList.add('active'));
                 document.getElementById('guide-step2').classList.add('ready');
             };
         } else {
             const del = document.createElement('button');
             del.className = 'btn-del'; del.innerHTML = '×';
-            del.onclick = (e) => { e.stopPropagation(); card.nextSibling.remove(); card.remove(); };
+            del.onclick = (e) => { 
+                e.stopPropagation(); 
+                const next = card.nextSibling;
+                if(next && next.classList.contains('insert-divider')) next.remove();
+                card.remove(); 
+            };
             card.appendChild(del);
         }
         return card;
@@ -251,17 +250,13 @@
     async function extractSinglePage(fileId, pageNum) {
         showStatus('PDF生成中...');
         try {
-            // 【修正】バッファのコピーを渡す
-            const srcBuffer = pdfDataMap.get(fileId).slice(0);
-            const srcPdf = await PDFDocument.load(srcBuffer, { ignoreEncryption: true });
+            const buffer = pdfDataMap.get(fileId);
+            const srcPdf = await PDFDocument.load(buffer.slice(0), { ignoreEncryption: true });
             const outPdf = await PDFDocument.create();
-            const [page] = await outPdf.copyPages(srcPdf, [pageNum - 1]);
+            const [page] = await outPdf.copyPages(srcPdf, [parseInt(pageNum) - 1]);
             outPdf.addPage(page);
             download(await outPdf.save(), `page_${pageNum}.pdf`);
-        } catch (e) { 
-            console.error(e);
-            alert('保存に失敗しました: ' + e.message); 
-        }
+        } catch (e) { alert('保存に失敗しました: ' + e.message); }
         hideStatus();
     }
 
@@ -272,29 +267,33 @@
         
         try {
             const outPdf = await PDFDocument.create();
-            const pdfDocCache = new Map(); // 同じファイルの再ロードを防ぐキャッシュ
+            const pdfDocCache = new Map();
 
             for (const card of targetCards) {
-                const fId = card.dataset.fid;
-                const pNum = parseInt(card.dataset.pnum);
+                const fId = card.getAttribute('data-fid');
+                const pNum = parseInt(card.getAttribute('data-pnum'));
+
+                if (!fId || isNaN(pNum)) continue;
 
                 if (!pdfDocCache.has(fId)) {
-                    const buffer = pdfDataMap.get(fId);
-                    if (!buffer) throw new Error(`元ファイルが見つかりません (ID: ${fId})`);
+                    const rawBuffer = pdfDataMap.get(fId);
+                    if (!rawBuffer) throw new Error("元データが見つかりません。再読み込みしてください。");
                     
-                    // 【修正】バッファのコピーを渡してロードする（重要）
-                    const loadedDoc = await PDFDocument.load(buffer.slice(0), { ignoreEncryption: true });
-                    pdfDocCache.set(fId, loadedDoc);
+                    // バッファをコピーして読み込む
+                    const doc = await PDFDocument.load(rawBuffer.slice(0), { ignoreEncryption: true });
+                    pdfDocCache.set(fId, doc);
                 }
 
                 const srcDoc = pdfDocCache.get(fId);
                 const [copiedPage] = await outPdf.copyPages(srcDoc, [pNum - 1]);
                 outPdf.addPage(copiedPage);
             }
-            download(await outPdf.save(), 'merged.pdf');
-        } catch (e) { 
+            
+            const pdfBytes = await outPdf.save();
+            download(pdfBytes, 'merged.pdf');
+        } catch (e) {
             console.error(e);
-            alert('PDFの生成に失敗しました。\n詳細: ' + e.message); 
+            alert('PDFの生成に失敗しました。\n詳細: ' + e.message);
         }
         hideStatus();
     }
@@ -303,10 +302,19 @@
     function showStatus(t) { document.getElementById('status-text').innerText = t; document.getElementById('status').style.display = 'flex'; }
     function updateStatusText(t) { document.getElementById('status-text').innerText = t; }
     function hideStatus() { document.getElementById('status').style.display = 'none'; }
+    
     function download(bytes, name) {
         const blob = new Blob([bytes], {type: 'application/pdf'});
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob); a.download = name; a.click();
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 100);
     }
 </script>
 </body>
